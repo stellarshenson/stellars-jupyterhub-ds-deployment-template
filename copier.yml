@@ -30,16 +30,53 @@ _exclude:
 _tasks:
   - "chmod +x start.sh stop.sh cleanup.sh"
   - "{% if local_tls_scaffolding %}chmod +x certs/certs_generate.sh certs/install_cert.sh{% endif %}"
-_message_after_copy: |
-  Deployment scaffolded at: {{ _copier_conf.dst_path }}
+_message_after_copy: |2
 
-  Next steps:
-    cd {{ _copier_conf.dst_path }}
-    {% if local_tls_scaffolding %}cd certs && ./certs_generate.sh --cn "{{ cert_common_name }}" --dns-altnames "{{ cert_dns_altnames }}" && cd ..{% endif %}
-    ./start.sh
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║  {{ project_name }} - deployment scaffolded
+    ╚══════════════════════════════════════════════════════════════════╝
 
-  Then open https://{{ jupyterhub_subdomain_prefix }}{{ base_hostname }}/
-  and complete the admin bootstrap (sign up as '{{ admin_username }}').
+    ┌─ Identity
+    │  Project name           {{ project_name }}
+    │  Project slug           {{ project_slug }}
+    │  Branding prefix        {{ branding_prefix }}
+    ├─ Access
+    │  URL                    https://{{ jupyterhub_subdomain_prefix }}{{ base_hostname }}/
+    │  Admin username         {{ admin_username }}
+    │  Self-registration      {{ 'enabled' if signup_enabled else 'disabled (admin bootstrap window opens on fresh DB)' }}
+    ├─ Networking
+    │  Base hostname          {{ base_hostname }}
+    │  Subdomain prefix       {{ jupyterhub_subdomain_prefix or '(root domain)' }}
+    │  Extra host aliases     {{ extra_host_aliases or '(none)' }}
+    ├─ TLS
+    │  Local Traefik + certs  {{ 'enabled (self-signed, file provider)' if local_tls_scaffolding else 'disabled (assumes external reverse proxy)' }}
+    {%- if local_tls_scaffolding %}
+    │  Cert CN                {{ cert_common_name }}
+    │  Cert DNS altnames      {{ cert_dns_altnames }}
+    {%- endif %}
+    ├─ Hub features
+    │  Timezone               {{ timezone or 'UTC' }}
+    │  Idle culler            {{ 'enabled (max +48h extension)' if idle_culler_enabled else 'disabled' }}
+    │  CIFS shared mount      {{ 'enabled (toggle via ENABLE_CIFS=1 in .env)' if cifs_shared_mount else 'disabled' }}
+    ├─ Built-in defaults  (not asked for; edit compose_override.yml to change)
+    │  Notebook image         stellars/stellars-jupyterlab-ds:latest
+    │  Hub URL prefix         /  (root path)
+    │  Upstream tracking      clone (read-only; refresh via start.sh --refresh)
+    │  Toolbar capitalize     enabled  (system name shown in caps)
+    │  Idle culler max ext    48 hours
+    └─
+
+    Next steps:
+      cd {{ _copier_conf.dst_path }}
+    {%- if local_tls_scaffolding %}
+      cd certs && ./certs_generate.sh \
+          --cn "{{ cert_common_name }}" \
+          --dns-altnames "{{ cert_dns_altnames }}" && cd ..
+    {%- endif %}
+      ./start.sh
+
+    Then open https://{{ jupyterhub_subdomain_prefix }}{{ base_hostname }}/
+    and complete the admin bootstrap (sign up as '{{ admin_username }}').
 
 # ── Identity ─────────────────────────────────────────────────────────────────
 project_name:
@@ -49,24 +86,32 @@ project_name:
 
 project_slug:
   type: str
-  help: "Lower-kebab slug used as COMPOSE_PROJECT_NAME and the deployment directory name."
+  help: "Lower-kebab slug used as COMPOSE_PROJECT_NAME and the deployment directory name. Allowed characters: lowercase letters, digits, underscore, hyphen."
   default: "{{ project_name | lower | replace(' ', '-') | replace('_', '-') }}"
+  validator: >-
+    {% if not (project_slug | regex_search('^[a-z0-9_-]+$')) %}
+    Project slug must contain only lowercase letters, digits, underscores, and hyphens.
+    {% endif %}
 
 branding_prefix:
   type: str
-  help: "Filename prefix for branding assets (drives <prefix>_logo.png, etc.). Use 'jupyterhub' to keep stock filenames."
-  default: "jupyterhub"
+  help: "Filename prefix for branding assets (drives <prefix>_logo.png, etc.). Defaults to the project slug with hyphens converted to underscores."
+  default: "{{ project_slug | replace('-', '_') }}"
+  validator: >-
+    {% if not (branding_prefix | regex_search('^[a-z0-9_]+$')) %}
+    Branding prefix must contain only lowercase letters, digits, and underscores (no hyphens - filenames use _ as separator).
+    {% endif %}
 
 # ── Networking ───────────────────────────────────────────────────────────────
 base_hostname:
   type: str
-  help: "Traefik root domain (e.g. 'localhost', 'lab.example.com')."
+  help: "Hostname, DNS domain, or IP address Traefik routes on (e.g. 'localhost', 'lab.example.com', '192.168.1.50')."
   default: "localhost"
 
 jupyterhub_subdomain_prefix:
   type: str
-  help: "Subdomain prefix - must include trailing dot (e.g. 'jupyterhub.'); leave empty to serve at the root domain."
-  default: "jupyterhub."
+  help: "Subdomain prefix - must include trailing dot (e.g. 'jupyterhub.'). Leave empty to serve at the root host (required when base_hostname is an IP)."
+  default: "{% if base_hostname | regex_search('^\\d{1,3}(\\.\\d{1,3}){3}$') %}{% else %}jupyterhub.{% endif %}"
 
 extra_host_aliases:
   type: str
@@ -87,8 +132,8 @@ cert_common_name:
 
 cert_dns_altnames:
   type: str
-  help: "DNS altnames (comma-separated)."
-  default: "*.{{ base_hostname }},{{ base_hostname }}"
+  help: "Cert SANs (comma-separated). DNS names get a wildcard sibling; an IP address is added as-is (no wildcard - IPs cannot have subject-alt-name wildcards)."
+  default: "{% if base_hostname | regex_search('^\\d{1,3}(\\.\\d{1,3}){3}$') %}{{ base_hostname }}{% else %}*.{{ base_hostname }},{{ base_hostname }}{% endif %}"
   when: "{{ local_tls_scaffolding }}"
 
 # ── Authentication ───────────────────────────────────────────────────────────
@@ -118,16 +163,3 @@ cifs_shared_mount:
   help: "Ship CIFS overlay (compose_cifs.yml + ENABLE_CIFS toggle in .env.default)."
   default: false
 
-# ── Image / startup ──────────────────────────────────────────────────────────
-notebook_image:
-  type: str
-  help: "User notebook image."
-  default: "stellars/stellars-jupyterlab-ds:latest"
-
-upstream_tracking:
-  type: str
-  choices:
-    "Read-only clone (start.sh refreshes from upstream/main)": "clone"
-    "Git submodule (operator manages pointer manually)": "submodule"
-  default: "clone"
-  help: "How to track the upstream stellars-jupyterhub-ds platform."

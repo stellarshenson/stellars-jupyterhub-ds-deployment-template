@@ -1,12 +1,8 @@
 #!/bin/bash
 # Start {{ project_name }} JupyterHub platform
 # Usage: ./start.sh [--refresh] [--no-pull]
-{%- if upstream_tracking == 'clone' %}
 #   --refresh   fast-forward stellars-jupyterhub-ds clone to upstream/main
 #               (aborts on any local modifications or non-fast-forward history)
-{%- else %}
-#   --refresh   pull and re-pin the stellars-jupyterhub-ds submodule to upstream/main
-{%- endif %}
 #   --no-pull   skip the docker pull step; use whatever images are already on the host
 
 set -e
@@ -29,14 +25,13 @@ if [[ -f .env ]]; then
     source .env
 fi
 
+# Upstream platform clone (NOT a git submodule). Treated as read-only:
+# this overlay never modifies its contents, only refreshes from origin/main.
+# Listed in .gitignore so it does not appear in this repo's index.
 SUB="stellars-jupyterhub-ds"
 SUB_URL="https://github.com/stellarshenson/stellars-jupyterhub-ds.git"
 SUB_BRANCH="main"
 
-{% if upstream_tracking == 'clone' -%}
-# Upstream platform clone (NOT a git submodule). Treated as read-only:
-# this overlay never modifies its contents, only refreshes from origin/main.
-# Listed in .gitignore so it does not appear in this repo's index.
 if [[ ! -d "$SUB/.git" ]]; then
     echo "Cloning $SUB (branch $SUB_BRANCH)..."
     git clone --branch "$SUB_BRANCH" "$SUB_URL" "$SUB"
@@ -52,19 +47,6 @@ if [[ "$REFRESH" == "1" ]]; then
     fi
     git -C "$SUB" pull --ff-only origin "$SUB_BRANCH"
 fi
-{%- else -%}
-# Upstream platform managed as a git submodule.
-if [[ ! -f "$SUB/.git" && ! -d "$SUB/.git" ]]; then
-    echo "Initialising submodule $SUB..."
-    git submodule update --init --recursive "$SUB"
-fi
-
-if [[ "$REFRESH" == "1" ]]; then
-    echo "Refreshing $SUB submodule from origin/$SUB_BRANCH..."
-    git submodule sync --recursive "$SUB"
-    git submodule update --init --remote --force "$SUB"
-fi
-{%- endif %}
 
 # Build compose command
 COMPOSE_FILES="--env-file .env.default"
