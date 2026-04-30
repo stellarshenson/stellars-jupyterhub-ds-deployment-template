@@ -23,7 +23,7 @@ Override either value via `.env` (untracked).
 {{ project_slug }}/
   branding/                            # Branding assets - replace to rebrand
     {{ branding_prefix }}_logo.png
-    {{ branding_prefix }}_main_icon.png
+    {{ branding_prefix }}_main_icon.svg
     favicon.ico
   certs/                               # Self-signed TLS certificates
     certs_generate.sh                  # Generate cert + tls.yml
@@ -91,7 +91,7 @@ The `branding/` directory is mounted read-only at `/srv/branding` in the Jupyter
 
 - `JUPYTERHUB_LOGO_URI=file:///srv/branding/{{ branding_prefix }}_logo.png` - login page lockup
 - `JUPYTERHUB_FAVICON_URI=file:///srv/branding/favicon.ico` - browser tab
-- `JUPYTERHUB_LAB_MAIN_ICON_URI=file:///srv/branding/{{ branding_prefix }}_main_icon.png` - JupyterLab top bar
+- `JUPYTERHUB_LAB_MAIN_ICON_URI=file:///srv/branding/{{ branding_prefix }}_main_icon.svg` - JupyterLab top bar
 - `JUPYTERLAB_SYSTEM_NAME={{ project_name }}` - displayed system name
 
 To rebrand: drop replacement files at the same paths.
