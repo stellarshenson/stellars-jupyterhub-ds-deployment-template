@@ -40,8 +40,10 @@ my-jupyterhub/
 ## Updating from upstream
 
 ```bash
-copier update                          # re-render with the latest template + your saved answers
+copier update --trust                  # re-render with the latest template + your saved answers
 ```
+
+`--trust` is required again because `copier update` re-runs the template's `_tasks`.
 
 Copier persists answers in `.copier-answers.yml` so subsequent updates pick
 up new template features without re-asking the same questions. Conflicting
