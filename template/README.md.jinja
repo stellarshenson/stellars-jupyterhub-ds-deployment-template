@@ -6,7 +6,7 @@ Local deployment overlay of [stellars-jupyterhub-ds](https://github.com/stellars
 
 - Multi-user JupyterHub 4 platform with GPU support and NativeAuthenticator
 - {{ project_name }} branding (logo, JupyterLab top-bar icon, browser favicon)
-- Local Traefik reverse proxy with self-signed TLS certificates
+- Bundled local reverse proxy ([Traefik](https://traefik.io/)) with self-signed TLS certificates
 
 ## Access
 
@@ -29,7 +29,7 @@ Override either value via `.env` (untracked).
     certs_generate.sh                  # Generate cert + tls.yml
     install_cert.sh                    # Install to system trust store (Linux/macOS)
     install_cert.bat                   # Install to Windows trust store
-  compose_override.yml                 # Branding env vars + local Traefik
+  compose_override.yml                 # Branding env vars + local reverse proxy
 {% if cifs_shared_mount -%}
   compose_cifs.yml                     # Optional CIFS NAS mount (enabled via ENABLE_CIFS=1)
 {%- endif %}

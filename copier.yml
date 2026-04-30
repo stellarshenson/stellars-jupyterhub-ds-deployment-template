@@ -48,7 +48,7 @@ _message_after_copy: |2
     │  Base hostname          {{ base_hostname }}
     │  Subdomain              {{ jupyterhub_subdomain or '(root domain)' }}
     │  Extra host aliases     {{ extra_host_aliases or '(none)' }}
-    ├─ TLS  (self-signed via local Traefik + file provider)
+    ├─ TLS  (self-signed; bundled local reverse proxy)
     │  Cert CN                {{ cert_common_name }}
     │  Cert DNS altnames      {{ cert_dns_altnames }}
     ├─ Hub features
@@ -100,7 +100,7 @@ branding_prefix:
 # ── Networking ───────────────────────────────────────────────────────────────
 base_hostname:
   type: str
-  help: "Hostname, DNS domain, or IP address Traefik routes on (e.g. 'localhost', 'lab.example.com', '192.168.1.50')."
+  help: "Hostname, DNS domain, or IP address the deployment is reached on (e.g. 'localhost', 'lab.example.com', '192.168.1.50')."
   default: "localhost"
 
 jupyterhub_subdomain:
@@ -110,7 +110,7 @@ jupyterhub_subdomain:
 
 extra_host_aliases:
   type: str
-  help: "Extra Traefik Host() aliases, comma-separated (e.g. 'lab,lab.ts.net'). Leave empty for none."
+  help: "Other hostnames this deployment should respond to, comma-separated (e.g. 'lab,lab.ts.net'). Leave empty for none."
   default: ""
 
 # ── TLS ──────────────────────────────────────────────────────────────────────
