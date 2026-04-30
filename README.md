@@ -12,10 +12,12 @@ touching your overlay.
 
 ```bash
 pip install copier
-copier copy gh:stellarshenson/stellars-jupyterhub-ds-deployment-template ./my-jupyterhub
+copier copy --trust gh:stellarshenson/stellars-jupyterhub-ds-deployment-template ./my-jupyterhub
 cd my-jupyterhub
 ./start.sh
 ```
+
+`--trust` lets copier run the template's `_tasks` (chmod on the generated `start.sh` / `stop.sh` / `cleanup.sh`); without it copier refuses to execute post-copy commands.
 
 The interview asks ~15 questions (project name, hostname, admin user, branding
 prefix, optional CIFS / local TLS / etc.) and renders a working deployment.
