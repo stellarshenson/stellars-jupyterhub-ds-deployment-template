@@ -89,7 +89,7 @@ services:
       - "traefik.enable=true"
 
       # JupyterHub router
-      - "traefik.http.routers.jupyterhub-rtr.rule=Host(`${JUPYTERHUB_PREFIX}${BASE_HOSTNAME}`){%- if extra_host_aliases %}{%- for alias in extra_host_aliases.split(',') %} || Host(`{{ alias.strip() }}`){%- endfor %}{%- endif %} || HostRegexp(`^${JUPYTERHUB_PREFIX}(.*\\.)?localhost$`)"
+      - "traefik.http.routers.jupyterhub-rtr.rule=Host(`${JUPYTERHUB_PREFIX}${BASE_HOSTNAME}`) || HostRegexp(`^${JUPYTERHUB_PREFIX}(.*\\.)?localhost$`)"
       - "traefik.http.routers.jupyterhub-rtr.entrypoints=websecure"
       - "traefik.http.routers.jupyterhub-rtr.tls=true"
       - "traefik.http.routers.jupyterhub-rtr.service=jupyterhub-svc"
