@@ -58,4 +58,4 @@ Bug fixes and feature work for the platform itself live in the
 
 ## License
 
-Same as the upstream platform.
+[MIT](LICENSE) - same as the upstream platform.
