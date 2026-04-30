@@ -1,0 +1,60 @@
+name: Validate Copier Template
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario:
+          - name: defaults
+            data: ""
+          - name: with-cifs
+            data: "--data cifs_shared_mount=true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install copier
+        run: pip install copier
+
+      - name: Render template (${{ matrix.scenario.name }})
+        run: |
+          rm -rf /tmp/render
+          copier copy --trust --defaults ${{ matrix.scenario.data }} . /tmp/render
+
+      - name: Assert key rendered files
+        run: |
+          cd /tmp/render
+          test -f start.sh
+          test -f stop.sh
+          test -f compose_override.yml
+          test -f .env.default
+          test -f README.md
+          test -f certs/certs.params
+          test -f certs/certs_generate.sh
+          test -d branding
+
+      - name: Assert CIFS conditional rendering
+        run: |
+          cd /tmp/render
+          if [ "${{ matrix.scenario.name }}" = "with-cifs" ]; then
+            test -f compose_cifs.yml
+          else
+            test ! -f compose_cifs.yml
+          fi
