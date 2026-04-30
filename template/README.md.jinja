@@ -6,11 +6,7 @@ Local deployment overlay of [stellars-jupyterhub-ds](https://github.com/stellars
 
 - Multi-user JupyterHub 4 platform with GPU support and NativeAuthenticator
 - {{ project_name }} branding (logo, JupyterLab top-bar icon, browser favicon)
-{% if local_tls_scaffolding -%}
 - Local Traefik reverse proxy with self-signed TLS certificates
-{%- else -%}
-- Designed to run behind an existing reverse proxy (no bundled Traefik)
-{%- endif %}
 
 ## Access
 
@@ -29,13 +25,11 @@ Override either value via `.env` (untracked).
     {{ branding_prefix }}_logo.png
     {{ branding_prefix }}_main_icon.png
     favicon.ico
-{% if local_tls_scaffolding -%}
   certs/                               # Self-signed TLS certificates
     certs_generate.sh                  # Generate cert + tls.yml
     install_cert.sh                    # Install to system trust store (Linux/macOS)
     install_cert.bat                   # Install to Windows trust store
-{%- endif %}
-  compose_override.yml                 # Branding env vars{% if local_tls_scaffolding %} + local Traefik{% endif %}
+  compose_override.yml                 # Branding env vars + local Traefik
 {% if cifs_shared_mount -%}
   compose_cifs.yml                     # Optional CIFS NAS mount (enabled via ENABLE_CIFS=1)
 {%- endif %}
@@ -44,18 +38,13 @@ Override either value via `.env` (untracked).
   start.sh                             # Start the stack
   stop.sh                              # Stop the stack
   cleanup.sh                           # Reclaim Docker disk space
-  stellars-jupyterhub-ds/              # Read-only {% if upstream_tracking == 'clone' %}clone{% else %}submodule{% endif %} of upstream platform
+  stellars-jupyterhub-ds/              # Read-only clone of upstream platform
 ```
 
 ## First-time Setup
 
-{% if upstream_tracking == 'clone' -%}
 The upstream platform is cloned automatically by `start.sh` on first run. The `stellars-jupyterhub-ds/` directory is **not** a git submodule of this overlay - it's a plain clone listed in `.gitignore`, treated as read-only.
-{%- else -%}
-The upstream platform is tracked as a git submodule. After cloning this repo, run `git submodule update --init --recursive` (or `./start.sh` will do it for you on first run).
-{%- endif %}
 
-{% if local_tls_scaffolding -%}
 Generate a self-signed cert for your hostname:
 
 ```bash
@@ -70,7 +59,6 @@ Optionally install the cert to your local trust store:
 ```bash
 ./install_cert.sh {{ project_slug }}-certificate
 ```
-{%- endif %}
 
 ## Deployment
 

@@ -29,7 +29,7 @@ _exclude:
   - "**/.ipynb_checkpoints"
 _tasks:
   - "chmod +x start.sh stop.sh cleanup.sh"
-  - "{% if local_tls_scaffolding %}chmod +x certs/certs_generate.sh certs/install_cert.sh{% endif %}"
+  - "chmod +x certs/certs_generate.sh certs/install_cert.sh"
 _message_after_copy: |2
 
     ╔══════════════════════════════════════════════════════════════════╗
@@ -48,12 +48,9 @@ _message_after_copy: |2
     │  Base hostname          {{ base_hostname }}
     │  Subdomain prefix       {{ jupyterhub_subdomain_prefix or '(root domain)' }}
     │  Extra host aliases     {{ extra_host_aliases or '(none)' }}
-    ├─ TLS
-    │  Local Traefik + certs  {{ 'enabled (self-signed, file provider)' if local_tls_scaffolding else 'disabled (assumes external reverse proxy)' }}
-    {%- if local_tls_scaffolding %}
+    ├─ TLS  (self-signed via local Traefik + file provider)
     │  Cert CN                {{ cert_common_name }}
     │  Cert DNS altnames      {{ cert_dns_altnames }}
-    {%- endif %}
     ├─ Hub features
     │  Timezone               {{ timezone or 'UTC' }}
     │  Idle culler            {{ 'enabled (max +48h extension)' if idle_culler_enabled else 'disabled' }}
@@ -68,11 +65,9 @@ _message_after_copy: |2
 
     Next steps:
       cd {{ _copier_conf.dst_path }}
-    {%- if local_tls_scaffolding %}
       cd certs && ./certs_generate.sh \
           --cn "{{ cert_common_name }}" \
           --dns-altnames "{{ cert_dns_altnames }}" && cd ..
-    {%- endif %}
       ./start.sh
 
     Then open https://{{ jupyterhub_subdomain_prefix }}{{ base_hostname }}/
@@ -119,22 +114,15 @@ extra_host_aliases:
   default: ""
 
 # ── TLS ──────────────────────────────────────────────────────────────────────
-local_tls_scaffolding:
-  type: bool
-  help: "Ship local Traefik service + self-signed cert scripts? Disable when running behind an external reverse proxy."
-  default: true
-
 cert_common_name:
   type: str
   help: "Certificate common name."
   default: "{{ project_name | upper }} Certificate"
-  when: "{{ local_tls_scaffolding }}"
 
 cert_dns_altnames:
   type: str
   help: "Cert SANs (comma-separated). DNS names get a wildcard sibling; an IP address is added as-is (no wildcard - IPs cannot have subject-alt-name wildcards)."
   default: "{% if base_hostname | regex_search('^\\d{1,3}(\\.\\d{1,3}){3}$') %}{{ base_hostname }}{% else %}*.{{ base_hostname }},{{ base_hostname }}{% endif %}"
-  when: "{{ local_tls_scaffolding }}"
 
 # ── Authentication ───────────────────────────────────────────────────────────
 admin_username:

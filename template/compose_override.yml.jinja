@@ -1,21 +1,17 @@
 # =============================================================================
 # Compose Override - {{ project_name }}
-{% if local_tls_scaffolding -%}
 # Local Traefik with self-signed certificates and {{ project_name }} branding.
-{%- else -%}
-# Branding overlay - assumes external reverse proxy in front of JupyterHub.
-{%- endif %}
 # =============================================================================
-{% if local_tls_scaffolding %}
+#
 # PORTS:  80 (HTTP -> redirects to 443)  |  443 (HTTPS)
 # CERT:   Self-signed cert in ./certs/
 # ACCESS: https://${JUPYTERHUB_PREFIX}${BASE_HOSTNAME}/
 #
 # Set BASE_HOSTNAME and JUPYTERHUB_PREFIX in .env.
 # =============================================================================
-{% endif %}
+
 services:
-{% if local_tls_scaffolding %}
+
   traefik:
     image: traefik:latest
     command:
@@ -66,9 +62,9 @@ services:
       - "traefik.http.routers.dashboard.tls=true"
       - "traefik.http.routers.dashboard.service=api@internal"
     restart: unless-stopped
-{% endif %}
+
   jupyterhub:
-    {% if local_tls_scaffolding -%}ports: []{%- endif %}
+    ports: []
     environment:
       # main settings
       - JUPYTERHUB_BASE_URL=/
@@ -89,7 +85,6 @@ services:
       - ../branding:/srv/branding:ro
     networks:
       - jupyterhub_network
-{% if local_tls_scaffolding %}
     labels:
       - "traefik.enable=true"
 
@@ -100,7 +95,7 @@ services:
       - "traefik.http.routers.jupyterhub-rtr.service=jupyterhub-svc"
       - "traefik.http.services.jupyterhub-svc.loadbalancer.server.scheme=http"
       - "traefik.http.services.jupyterhub-svc.loadbalancer.server.port=8000"
-{% endif %}
+
   watchtower:
     networks:
       - jupyterhub_network
