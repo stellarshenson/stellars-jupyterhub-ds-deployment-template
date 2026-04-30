@@ -13,7 +13,7 @@
 #
 # Run:
 #   pip install copier
-#   copier copy gh:stellarshenson/stellars-jupyterhub-ds-deployment-template ./my-jupyterhub
+#   copier copy gh:stellarshenson/copier-stellars-jupyterhub-ds ./my-jupyterhub
 
 _subdirectory: template
 _min_copier_version: "9.0"

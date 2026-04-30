@@ -1,10 +1,13 @@
 # stellars-jupyterhub-ds Deployment Template
 
-[Copier](https://copier.readthedocs.io/) template that scaffolds a thin
-deployment overlay for [stellars-jupyterhub-ds](https://github.com/stellarshenson/stellars-jupyterhub-ds).
+Source: [stellarshenson/copier-stellars-jupyterhub-ds](https://github.com/stellarshenson/copier-stellars-jupyterhub-ds)
 
-The generated overlay carries only what changes between deployments — branding,
-hostname / TLS, admin user, optional CIFS — and clones the upstream platform
+[Copier](https://copier.readthedocs.io/) template that scaffolds a thin
+deployment overlay for [stellars-jupyterhub-ds](https://github.com/stellarshenson/stellars-jupyterhub-ds)
+(the upstream JupyterHub platform).
+
+The generated overlay carries only what changes between deployments - branding,
+hostname / TLS, admin user, optional CIFS - and clones the upstream platform
 read-only so deployments stay upgradeable: pull new upstream commits without
 touching your overlay.
 
@@ -12,7 +15,7 @@ touching your overlay.
 
 ```bash
 pip install copier
-copier copy --trust gh:stellarshenson/stellars-jupyterhub-ds-deployment-template ./my-jupyterhub
+copier copy --trust gh:stellarshenson/copier-stellars-jupyterhub-ds ./my-jupyterhub
 cd my-jupyterhub
 ./start.sh
 ```
@@ -37,10 +40,12 @@ my-jupyterhub/
   stellars-jupyterhub-ds/              # Upstream platform (cloned read-only on first start)
 ```
 
-## Updating from upstream
+## Updating from this template
+
+Pull newer revisions of this template into an existing overlay:
 
 ```bash
-copier update --trust                  # re-render with the latest template + your saved answers
+copier update --trust                  # re-render against the latest template at gh:stellarshenson/copier-stellars-jupyterhub-ds
 ```
 
 `--trust` is required again because `copier update` re-runs the template's `_tasks`.
@@ -48,6 +53,11 @@ copier update --trust                  # re-render with the latest template + yo
 Copier persists answers in `.copier-answers.yml` so subsequent updates pick
 up new template features without re-asking the same questions. Conflicting
 edits surface as merge prompts.
+
+This is independent from upstream platform updates: `copier update` refreshes
+the overlay from this template repo, while `start.sh --refresh` (in the
+generated overlay) pulls new commits for the upstream `stellars-jupyterhub-ds`
+clone.
 
 ## What stays in the upstream platform
 

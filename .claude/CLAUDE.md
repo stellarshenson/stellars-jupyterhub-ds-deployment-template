@@ -24,7 +24,7 @@ The following workspace rules are STRICTLY ENFORCED for this project:
 
 **Copier template** for [stellars-jupyterhub-ds](https://github.com/stellarshenson/stellars-jupyterhub-ds) deployment overlays.
 
-Repository: `stellarshenson/stellars-jupyterhub-ds-deployment-template`
+Repository: `stellarshenson/copier-stellars-jupyterhub-ds`
 
 This template scaffolds a thin deployment directory that lives alongside a read-only
 clone of the upstream JupyterHub platform. The overlay carries only what changes

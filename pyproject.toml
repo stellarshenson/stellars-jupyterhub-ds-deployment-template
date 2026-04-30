@@ -1,10 +1,10 @@
 [project]
-name = "stellars-jupyterhub-ds-deployment-template"
-version = "1.0.3"
+name = "copier-stellars-jupyterhub-ds"
+version = "1.0.4"
 description = "Copier template that scaffolds a thin deployment overlay for stellars-jupyterhub-ds."
 authors = [
     { name = "Stellars Henson", email = "konrad.jelen@gmail.com" },
 ]
 
 [project.urls]
-Homepage = "https://github.com/stellarshenson/stellars-jupyterhub-ds-deployment-template"
+Homepage = "https://github.com/stellarshenson/copier-stellars-jupyterhub-ds"
