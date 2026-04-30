@@ -1,0 +1,133 @@
+# Copier interview for stellars-jupyterhub-ds deployment overlays.
+#
+# Generates a thin overlay directory that lives alongside a read-only
+# clone of upstream stellars-jupyterhub-ds. The overlay carries:
+#   - compose_override.yml (Traefik wiring + branding env vars)
+#   - branding/ (logo / favicon / icon assets)
+#   - certs/ (self-signed cert scripts, optional)
+#   - .env.default / .env (operator settings)
+#   - start.sh / stop.sh / cleanup.sh
+#
+# Upstream is cloned read-only on first start.sh, so the overlay stays
+# upgradeable: pull new upstream commits without touching this directory.
+#
+# Run:
+#   pip install copier
+#   copier copy gh:stellarshenson/stellars-jupyterhub-ds-deployment-template ./my-jupyterhub
+
+_subdirectory: template
+_min_copier_version: "9.0"
+_exclude:
+  # Always-excluded copier scaffolding
+  - "copier.yml"
+  - "~*"
+  - "*.py[co]"
+  - "__pycache__"
+  - ".git"
+  - ".DS_Store"
+  - ".ipynb_checkpoints"
+  - "**/.ipynb_checkpoints"
+_tasks:
+  - "chmod +x start.sh stop.sh cleanup.sh"
+  - "{% if local_tls_scaffolding %}chmod +x certs/certs_generate.sh certs/install_cert.sh{% endif %}"
+_message_after_copy: |
+  Deployment scaffolded at: {{ _copier_conf.dst_path }}
+
+  Next steps:
+    cd {{ _copier_conf.dst_path }}
+    {% if local_tls_scaffolding %}cd certs && ./certs_generate.sh --cn "{{ cert_common_name }}" --dns-altnames "{{ cert_dns_altnames }}" && cd ..{% endif %}
+    ./start.sh
+
+  Then open https://{{ jupyterhub_subdomain_prefix }}{{ base_hostname }}/
+  and complete the admin bootstrap (sign up as '{{ admin_username }}').
+
+# ── Identity ─────────────────────────────────────────────────────────────────
+project_name:
+  type: str
+  help: "Display name for this deployment (e.g. 'Actone AI Hub')."
+  default: "My JupyterHub"
+
+project_slug:
+  type: str
+  help: "Lower-kebab slug used as COMPOSE_PROJECT_NAME and the deployment directory name."
+  default: "{{ project_name | lower | replace(' ', '-') | replace('_', '-') }}"
+
+branding_prefix:
+  type: str
+  help: "Filename prefix for branding assets (drives <prefix>_logo.png, etc.). Use 'jupyterhub' to keep stock filenames."
+  default: "jupyterhub"
+
+# ── Networking ───────────────────────────────────────────────────────────────
+base_hostname:
+  type: str
+  help: "Traefik root domain (e.g. 'localhost', 'lab.example.com')."
+  default: "localhost"
+
+jupyterhub_subdomain_prefix:
+  type: str
+  help: "Subdomain prefix - must include trailing dot (e.g. 'jupyterhub.'); leave empty to serve at the root domain."
+  default: "jupyterhub."
+
+extra_host_aliases:
+  type: str
+  help: "Extra Traefik Host() aliases, comma-separated (e.g. 'lab,lab.ts.net'). Leave empty for none."
+  default: ""
+
+# ── TLS ──────────────────────────────────────────────────────────────────────
+local_tls_scaffolding:
+  type: bool
+  help: "Ship local Traefik service + self-signed cert scripts? Disable when running behind an external reverse proxy."
+  default: true
+
+cert_common_name:
+  type: str
+  help: "Certificate common name."
+  default: "{{ project_name | upper }} Certificate"
+  when: "{{ local_tls_scaffolding }}"
+
+cert_dns_altnames:
+  type: str
+  help: "DNS altnames (comma-separated)."
+  default: "*.{{ base_hostname }},{{ base_hostname }}"
+  when: "{{ local_tls_scaffolding }}"
+
+# ── Authentication ───────────────────────────────────────────────────────────
+admin_username:
+  type: str
+  help: "Initial admin username (JUPYTERHUB_ADMIN). On a fresh DB, signup is silently re-opened scoped to this name only."
+  default: "admin"
+
+signup_enabled:
+  type: bool
+  help: "Operator self-registration. Bootstrap window for the admin still opens on a fresh DB regardless."
+  default: false
+
+# ── Hub features ─────────────────────────────────────────────────────────────
+timezone:
+  type: str
+  help: "IANA timezone applied to hub and spawned containers (blank = UTC)."
+  default: "Europe/Warsaw"
+
+idle_culler_enabled:
+  type: bool
+  help: "Idle server culler enabled."
+  default: true
+
+cifs_shared_mount:
+  type: bool
+  help: "Ship CIFS overlay (compose_cifs.yml + ENABLE_CIFS toggle in .env.default)."
+  default: false
+
+# ── Image / startup ──────────────────────────────────────────────────────────
+notebook_image:
+  type: str
+  help: "User notebook image."
+  default: "stellars/stellars-jupyterlab-ds:latest"
+
+upstream_tracking:
+  type: str
+  choices:
+    "Read-only clone (start.sh refreshes from upstream/main)": "clone"
+    "Git submodule (operator manages pointer manually)": "submodule"
+  default: "clone"
+  help: "How to track the upstream stellars-jupyterhub-ds platform."

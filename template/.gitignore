@@ -1,0 +1,28 @@
+# Logs
+logs/
+*.log
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# Docker
+.docker/
+
+# TLS certificates (private keys)
+certs/*.pem
+certs/**/*.pem
+
+# Upstream platform clone - cloned and refreshed by start.sh, never modified locally
+/stellars-jupyterhub-ds/

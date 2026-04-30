@@ -1,0 +1,16 @@
+# =============================================================================
+# CIFS Volume Mount - Remote NAS for large datasets
+# =============================================================================
+# Enabled via ENABLE_CIFS=1 in .env
+# =============================================================================
+
+volumes:
+  jupyterhub_shared:
+    driver: local
+    name: ${COMPOSE_PROJECT_NAME:-{{ project_slug }}}_shared
+    driver_opts:
+      type: cifs
+      device: //nas.example.com/share
+      o: username=YOUR_USER,password=YOUR_PASSWORD,uid=1000,gid=1000,vers=3.0
+
+# EOF

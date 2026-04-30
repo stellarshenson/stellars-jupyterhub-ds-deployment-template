@@ -1,0 +1,115 @@
+# {{ project_name }} - JupyterHub Deployment
+
+Local deployment overlay of [stellars-jupyterhub-ds](https://github.com/stellarshenson/stellars-jupyterhub-ds), generated from the [deployment template](https://github.com/stellarshenson/stellars-jupyterhub-ds-deployment-template).
+
+## Overview
+
+- Multi-user JupyterHub 4 platform with GPU support and NativeAuthenticator
+- {{ project_name }} branding (logo, JupyterLab top-bar icon, browser favicon)
+{% if local_tls_scaffolding -%}
+- Local Traefik reverse proxy with self-signed TLS certificates
+{%- else -%}
+- Designed to run behind an existing reverse proxy (no bundled Traefik)
+{%- endif %}
+
+## Access
+
+- `BASE_HOSTNAME={{ base_hostname }}` - root domain
+- `JUPYTERHUB_PREFIX={{ jupyterhub_subdomain_prefix }}` - subdomain prefix (empty = root)
+
+Default URL: `https://{{ jupyterhub_subdomain_prefix }}{{ base_hostname }}/`
+
+Override either value via `.env` (untracked).
+
+## Structure
+
+```
+{{ project_slug }}/
+  branding/                            # Branding assets - replace to rebrand
+    {{ branding_prefix }}_logo.png
+    {{ branding_prefix }}_main_icon.png
+    favicon.ico
+{% if local_tls_scaffolding -%}
+  certs/                               # Self-signed TLS certificates
+    certs_generate.sh                  # Generate cert + tls.yml
+    install_cert.sh                    # Install to system trust store (Linux/macOS)
+    install_cert.bat                   # Install to Windows trust store
+{%- endif %}
+  compose_override.yml                 # Branding env vars{% if local_tls_scaffolding %} + local Traefik{% endif %}
+{% if cifs_shared_mount -%}
+  compose_cifs.yml                     # Optional CIFS NAS mount (enabled via ENABLE_CIFS=1)
+{%- endif %}
+  .env.default                         # Default environment variables (tracked)
+  .env                                 # Local overrides (untracked)
+  start.sh                             # Start the stack
+  stop.sh                              # Stop the stack
+  cleanup.sh                           # Reclaim Docker disk space
+  stellars-jupyterhub-ds/              # Read-only {% if upstream_tracking == 'clone' %}clone{% else %}submodule{% endif %} of upstream platform
+```
+
+## First-time Setup
+
+{% if upstream_tracking == 'clone' -%}
+The upstream platform is cloned automatically by `start.sh` on first run. The `stellars-jupyterhub-ds/` directory is **not** a git submodule of this overlay - it's a plain clone listed in `.gitignore`, treated as read-only.
+{%- else -%}
+The upstream platform is tracked as a git submodule. After cloning this repo, run `git submodule update --init --recursive` (or `./start.sh` will do it for you on first run).
+{%- endif %}
+
+{% if local_tls_scaffolding -%}
+Generate a self-signed cert for your hostname:
+
+```bash
+cd certs
+./certs_generate.sh \
+  --cn "{{ cert_common_name }}" \
+  --dns-altnames "{{ cert_dns_altnames }}"
+```
+
+Optionally install the cert to your local trust store:
+
+```bash
+./install_cert.sh {{ project_slug }}-certificate
+```
+{%- endif %}
+
+## Deployment
+
+```bash
+./start.sh           # Start the stack
+./start.sh --refresh # Update upstream stellars-jupyterhub-ds
+./start.sh --no-pull # Skip docker pull (use locally-built images)
+./stop.sh            # Stop all services
+./cleanup.sh         # Reclaim Docker disk space
+./cleanup.sh --all   # Also remove stopped containers and unused volumes
+```
+
+## First Admin Bootstrap
+
+The first admin user is created in one of two modes. Both honour `JUPYTERHUB_ADMIN={{ admin_username }}` and never auto-create the admin with an unrecoverable random password.
+
+**Self-signup (default)** - leave `JUPYTERHUB_ADMIN_PASSWORD` unset. On a fresh deployment with empty database, the signup form is silently re-opened scoped to `{{ admin_username }}` only. Visit `https://{{ jupyterhub_subdomain_prefix }}{{ base_hostname }}/hub/signup`, register as `{{ admin_username }}` with a password you choose, and log in. NativeAuthenticator self-approves that signup and the admin role is granted at login. Any other username on the signup form is rejected. Once the admin exists in the database, the bootstrap window closes.
+
+**Provisioned** - set `JUPYTERHUB_ADMIN_PASSWORD` in `compose_override.yml`:
+
+```yaml
+- JUPYTERHUB_ADMIN_PASSWORD=<your-initial-password>
+```
+
+The hub seeds the admin record with that password on startup. The value is **initial only** - once the admin changes their password through the UI, the env value is permanently ignored.
+
+## Branding
+
+The `branding/` directory is mounted read-only at `/srv/branding` in the JupyterHub container. The compose override sets:
+
+- `JUPYTERHUB_LOGO_URI=file:///srv/branding/{{ branding_prefix }}_logo.png` - login page lockup
+- `JUPYTERHUB_FAVICON_URI=file:///srv/branding/favicon.ico` - browser tab
+- `JUPYTERHUB_LAB_MAIN_ICON_URI=file:///srv/branding/{{ branding_prefix }}_main_icon.png` - JupyterLab top bar
+- `JUPYTERLAB_SYSTEM_NAME={{ project_name }}` - displayed system name
+
+To rebrand: drop replacement files at the same paths.
+
+## References
+
+- Upstream platform: https://github.com/stellarshenson/stellars-jupyterhub-ds
+- User container image: https://hub.docker.com/r/stellars/stellars-jupyterlab-ds
+- Deployment template: https://github.com/stellarshenson/stellars-jupyterhub-ds-deployment-template

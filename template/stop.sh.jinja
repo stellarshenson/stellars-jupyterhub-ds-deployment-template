@@ -1,0 +1,22 @@
+#!/bin/bash
+# Stop {{ project_name }} JupyterHub platform
+
+set -e
+
+cd "$(dirname "$0")"
+
+source .env.default
+if [[ -f .env ]]; then
+    source .env
+fi
+
+COMPOSE_FILES="--env-file .env.default"
+if [[ -f .env ]]; then
+    COMPOSE_FILES="${COMPOSE_FILES} --env-file .env"
+fi
+COMPOSE_FILES="${COMPOSE_FILES} -f stellars-jupyterhub-ds/compose.yml -f compose_override.yml"
+
+echo "Stopping {{ project_name }} JupyterHub platform..."
+docker compose ${COMPOSE_FILES} down
+
+echo "Done."
