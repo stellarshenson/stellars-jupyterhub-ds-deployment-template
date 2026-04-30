@@ -41,12 +41,12 @@ _message_after_copy: |2
     │  Project slug           {{ project_slug }}
     │  Branding prefix        {{ branding_prefix }}
     ├─ Access
-    │  URL                    https://{{ jupyterhub_subdomain_prefix }}{{ base_hostname }}/
+    │  URL                    https://{% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}{{ base_hostname }}/
     │  Admin username         {{ admin_username }}
     │  Self-registration      {{ 'enabled' if signup_enabled else 'disabled (admin bootstrap window opens on fresh DB)' }}
     ├─ Networking
     │  Base hostname          {{ base_hostname }}
-    │  Subdomain prefix       {{ jupyterhub_subdomain_prefix or '(root domain)' }}
+    │  Subdomain              {{ jupyterhub_subdomain or '(root domain)' }}
     │  Extra host aliases     {{ extra_host_aliases or '(none)' }}
     ├─ TLS  (self-signed via local Traefik + file provider)
     │  Cert CN                {{ cert_common_name }}
@@ -70,7 +70,7 @@ _message_after_copy: |2
           --dns-altnames "{{ cert_dns_altnames }}" && cd ..
       ./start.sh
 
-    Then open https://{{ jupyterhub_subdomain_prefix }}{{ base_hostname }}/
+    Then open https://{% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}{{ base_hostname }}/
     and complete the admin bootstrap (sign up as '{{ admin_username }}').
 
 # ── Identity ─────────────────────────────────────────────────────────────────
@@ -103,10 +103,10 @@ base_hostname:
   help: "Hostname, DNS domain, or IP address Traefik routes on (e.g. 'localhost', 'lab.example.com', '192.168.1.50')."
   default: "localhost"
 
-jupyterhub_subdomain_prefix:
+jupyterhub_subdomain:
   type: str
-  help: "Subdomain prefix - must include trailing dot (e.g. 'jupyterhub.'). Leave empty to serve at the root host (required when base_hostname is an IP)."
-  default: "{% if base_hostname | regex_search('^\\d{1,3}(\\.\\d{1,3}){3}$') %}{% else %}jupyterhub.{% endif %}"
+  help: "Optional subdomain - leave empty to serve at the root host (e.g. https://localhost/). No trailing dot; copier adds it where needed. Auto-empties when base_hostname is an IP."
+  default: "{% if base_hostname | regex_search('^\\d{1,3}(\\.\\d{1,3}){3}$') %}{% else %}jupyterhub{% endif %}"
 
 extra_host_aliases:
   type: str

@@ -11,9 +11,9 @@ Local deployment overlay of [stellars-jupyterhub-ds](https://github.com/stellars
 ## Access
 
 - `BASE_HOSTNAME={{ base_hostname }}` - root domain
-- `JUPYTERHUB_PREFIX={{ jupyterhub_subdomain_prefix }}` - subdomain prefix (empty = root)
+- `JUPYTERHUB_PREFIX={% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}` - subdomain prefix (empty = root)
 
-Default URL: `https://{{ jupyterhub_subdomain_prefix }}{{ base_hostname }}/`
+Default URL: `https://{% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}{{ base_hostname }}/`
 
 Override either value via `.env` (untracked).
 
@@ -85,7 +85,7 @@ copier update --trust
 
 The first admin user is created in one of two modes. Both honour `JUPYTERHUB_ADMIN={{ admin_username }}` and never auto-create the admin with an unrecoverable random password.
 
-**Self-signup (default)** - leave `JUPYTERHUB_ADMIN_PASSWORD` unset. On a fresh deployment with empty database, the signup form is silently re-opened scoped to `{{ admin_username }}` only. Visit `https://{{ jupyterhub_subdomain_prefix }}{{ base_hostname }}/hub/signup`, register as `{{ admin_username }}` with a password you choose, and log in. NativeAuthenticator self-approves that signup and the admin role is granted at login. Any other username on the signup form is rejected. Once the admin exists in the database, the bootstrap window closes.
+**Self-signup (default)** - leave `JUPYTERHUB_ADMIN_PASSWORD` unset. On a fresh deployment with empty database, the signup form is silently re-opened scoped to `{{ admin_username }}` only. Visit `https://{% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}{{ base_hostname }}/hub/signup`, register as `{{ admin_username }}` with a password you choose, and log in. NativeAuthenticator self-approves that signup and the admin role is granted at login. Any other username on the signup form is rejected. Once the admin exists in the database, the bootstrap window closes.
 
 **Provisioned** - set `JUPYTERHUB_ADMIN_PASSWORD` in `compose_override.yml`:
 

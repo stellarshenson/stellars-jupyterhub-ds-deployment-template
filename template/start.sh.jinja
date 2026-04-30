@@ -71,4 +71,4 @@ fi
 echo "Starting {{ project_name }} JupyterHub platform..."
 docker compose ${COMPOSE_FILES} up -d --no-build
 
-echo "Done. Access: https://${JUPYTERHUB_PREFIX:-{{ jupyterhub_subdomain_prefix }}}${BASE_HOSTNAME:-{{ base_hostname }}}/"
+echo "Done. Access: https://${JUPYTERHUB_PREFIX:-{% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}}${BASE_HOSTNAME:-{{ base_hostname }}}/"
