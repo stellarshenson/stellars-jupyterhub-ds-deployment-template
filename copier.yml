@@ -6,7 +6,7 @@
 #   - branding/ (logo / favicon / icon assets)
 #   - certs/ (self-signed cert scripts, optional)
 #   - .env.default / .env (operator settings)
-#   - start.sh / stop.sh / cleanup.sh
+#   - start.sh / stop.sh
 #
 # Upstream is cloned read-only on first start.sh, so the overlay stays
 # upgradeable: pull new upstream commits without touching this directory.
@@ -28,8 +28,8 @@ _exclude:
   - ".ipynb_checkpoints"
   - "**/.ipynb_checkpoints"
 _tasks:
-  - "chmod +x start.sh stop.sh cleanup.sh"
-  - "chmod +x certs/certs_generate.sh certs/install_cert.sh"
+  - "chmod +x start.sh stop.sh"
+  - "chmod +x certs/certs_generate.sh"
 _message_after_copy: |2
 
     ╔══════════════════════════════════════════════════════════════════╗
@@ -64,10 +64,7 @@ _message_after_copy: |2
 
     Next steps:
       cd {{ _copier_conf.dst_path }}
-      cd certs && ./certs_generate.sh \
-          --cn "{{ cert_common_name }}" \
-          --dns-altnames "{{ cert_dns_altnames }}" && cd ..
-      ./start.sh
+      ./start.sh                       # auto-generates self-signed cert from certs/certs.params on first run
 
     Then open https://{% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}{{ base_hostname }}/
     and complete the admin bootstrap (sign up as '{{ admin_username }}').

@@ -20,7 +20,7 @@ cd my-jupyterhub
 ./start.sh
 ```
 
-`--trust` lets copier run the template's `_tasks` (chmod on the generated `start.sh` / `stop.sh` / `cleanup.sh`); without it copier refuses to execute post-copy commands.
+`--trust` lets copier run the template's `_tasks` (chmod on the generated `start.sh` / `stop.sh`); without it copier refuses to execute post-copy commands.
 
 The interview asks ~15 questions (project name, hostname, admin user, branding
 prefix, optional CIFS / local TLS / etc.) and renders a working deployment.
@@ -36,7 +36,7 @@ my-jupyterhub/
   compose_cifs.yml                     # Optional CIFS NAS mount
   .env.default                         # Default env (tracked)
   .env                                 # Local overrides (gitignored)
-  start.sh / stop.sh / cleanup.sh
+  start.sh / stop.sh
   stellars-jupyterhub-ds/              # Upstream platform (cloned read-only on first start)
 ```
 

@@ -1,0 +1,14 @@
+# Cert generation parameters - sourced by start.sh on first run when no
+# certificate is present in certs/.
+#
+# Traefik discovers TLS certs via *.tls.yml files in this directory. If none
+# is found, start.sh sources this file and invokes certs_generate.sh with
+# these values to bootstrap a self-signed cert pair plus the matching
+# tls.yml.
+#
+# To regenerate (e.g. after editing CN or altnames here): delete the
+# existing certs/*.tls.yml plus the matching certs/<prefix>/ directory,
+# then re-run ./start.sh.
+
+CERTS_CN="{{ cert_common_name }}"
+CERTS_DNS_ALTNAMES="{{ cert_dns_altnames }}"

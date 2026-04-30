@@ -25,6 +25,21 @@ if [[ -f .env ]]; then
     source .env
 fi
 
+# Bootstrap self-signed TLS cert on first run.
+# Traefik's file provider watches certs/ for *.tls.yml. If no tls.yml is
+# present, source the rendered params and let certs_generate.sh produce the
+# cert pair plus the matching tls.yml. Skipped silently on subsequent runs.
+if ! ls certs/*.tls.yml >/dev/null 2>&1; then
+    if [[ -f certs/certs.params && -x certs/certs_generate.sh ]]; then
+        echo "No TLS cert found in certs/ - generating from certs/certs.params..."
+        # shellcheck disable=SC1091
+        source certs/certs.params
+        (cd certs && ./certs_generate.sh --cn "$CERTS_CN" --dns-altnames "$CERTS_DNS_ALTNAMES")
+    else
+        echo "WARNING: no TLS cert in certs/ and certs/certs.params or certs/certs_generate.sh missing - Traefik will fall back to its built-in self-signed default." >&2
+    fi
+fi
+
 # Upstream platform clone (NOT a git submodule). Treated as read-only:
 # this overlay never modifies its contents, only refreshes from origin/main.
 # Listed in .gitignore so it does not appear in this repo's index.
