@@ -34,6 +34,10 @@ _skip_if_exists:
 _tasks:
   - "chmod +x start.sh stop.sh"
   - "chmod +x certs/certs_generate.sh"
+  # Generate the self-signed cert eagerly so the rendered overlay has *.tls.yml
+  # immediately. The shell guard makes the task idempotent on `copier update`:
+  # if a cert is already present, regeneration is skipped.
+  - "[ -n \"$(ls certs/*.tls.yml 2>/dev/null)\" ] || (cd certs && bash certs_generate.sh)"
 _message_after_copy: |2
 
     ╔══════════════════════════════════════════════════════════════════╗
@@ -66,9 +70,12 @@ _message_after_copy: |2
     │  Idle culler max ext    48 hours
     └─
 
+    Self-signed TLS cert was generated into certs/ as part of the render.
+    Edit certs/certs.params + re-run certs/certs_generate.sh to regenerate.
+
     Next steps:
       cd {{ _copier_conf.dst_path }}
-      ./start.sh                       # auto-generates self-signed cert from certs/certs.params on first run
+      ./start.sh
 
     Then open https://{% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}{{ base_hostname }}/
     and complete the admin bootstrap (sign up as '{{ admin_username }}').

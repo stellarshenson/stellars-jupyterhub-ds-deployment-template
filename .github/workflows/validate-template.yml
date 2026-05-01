@@ -38,31 +38,86 @@ jobs:
           rm -rf /tmp/render
           copier copy --trust --defaults ${{ matrix.scenario.data }} . /tmp/render
 
-      - name: Assert key rendered files
+      - name: Assert post-render overlay state
         run: |
           cd /tmp/render
+          # Static files - rendered as-is from template
           test -f start.sh
           test -f stop.sh
           test -f compose_override.yml
           test -f env.default
+          test -f .env
           test -f README.md
           test -f certs/certs.params
           test -f certs/certs_generate.sh
           test -d branding
-
-      - name: Assert CIFS conditional rendering
-        run: |
-          cd /tmp/render
+          # CIFS conditional file
           if [ "${{ matrix.scenario.name }}" = "with-cifs" ]; then
             test -f compose_cifs.yml
           else
             test ! -f compose_cifs.yml
           fi
 
-      - name: Smoke-test cert generation
+      - name: Assert eager cert files exist and match configured params
         run: |
-          cd /tmp/render/certs
-          # Zero-arg invocation reads certs.params (same as start.sh's bootstrap)
-          bash certs_generate.sh
-          ls *.tls.yml */cert.pem */key.pem
-          openssl x509 -in */cert.pem -noout -subject -ext subjectAltName
+          cd /tmp/render
+          # Eager cert generation (`_tasks` in copier.yml) - the rendered
+          # overlay MUST contain a usable Traefik tls.yml plus cert/key pair
+          # WITHOUT any manual script invocation. Anything else and Traefik
+          # would serve its built-in default cert on first start.
+          tls_file=$(ls certs/*.tls.yml)
+          cert_file=$(ls certs/*/cert.pem)
+          key_file=$(ls certs/*/key.pem)
+          test -f "$tls_file"
+          test -f "$cert_file"
+          test -f "$key_file"
+
+          # Cert content must reflect the CN and DNS altnames configured in
+          # certs.params. Anything else means certs_generate.sh ran with the
+          # wrong inputs (or didn't run at all and we got Traefik defaults).
+          # shellcheck disable=SC1091
+          source certs/certs.params
+          test -n "$CERTS_CN"
+          test -n "$CERTS_DNS_ALTNAMES"
+
+          subject=$(openssl x509 -in "$cert_file" -noout -subject)
+          echo "$subject" | grep -F "CN = $CERTS_CN" \
+            || { echo "FAIL: cert subject does not match CERTS_CN='$CERTS_CN'"; echo "got: $subject"; exit 1; }
+
+          sans=$(openssl x509 -in "$cert_file" -noout -ext subjectAltName)
+          IFS=',' read -ra altnames <<< "$CERTS_DNS_ALTNAMES"
+          for san in "${altnames[@]}"; do
+            san_trimmed=$(echo "$san" | xargs)
+            echo "$sans" | grep -F "DNS:$san_trimmed" \
+              || { echo "FAIL: cert SANs missing configured altname '$san_trimmed'"; echo "got: $sans"; exit 1; }
+          done
+
+          # tls.yml must reference the same prefix that the cert/key live under
+          prefix=$(basename "$cert_file" | xargs dirname)
+          prefix_dir=$(basename "$(dirname "$cert_file")")
+          grep -F "/certs/$prefix_dir/cert.pem" "$tls_file" \
+            || { echo "FAIL: tls.yml does not reference the rendered cert path"; cat "$tls_file"; exit 1; }
+          grep -F "/certs/$prefix_dir/key.pem" "$tls_file" \
+            || { echo "FAIL: tls.yml does not reference the rendered key path"; cat "$tls_file"; exit 1; }
+
+          # cert/key pair must match (same modulus)
+          cert_mod=$(openssl x509 -in "$cert_file" -noout -modulus | openssl md5)
+          key_mod=$(openssl rsa -in "$key_file" -noout -modulus 2>/dev/null | openssl md5)
+          test "$cert_mod" = "$key_mod" \
+            || { echo "FAIL: cert/key modulus mismatch (cert=$cert_mod key=$key_mod)"; exit 1; }
+
+          echo "OK: cert subject CN matches CERTS_CN, all CERTS_DNS_ALTNAMES present in SANs, tls.yml paths correct, cert/key pair valid"
+
+      - name: Assert idempotent re-render (existing cert is preserved)
+        run: |
+          cd /tmp/render
+          original_cert=$(readlink -f certs/*.tls.yml)
+          original_mtime=$(stat -c %Y "$original_cert")
+          cd /
+          # Re-run copier in --overwrite mode; the _tasks shell guard must
+          # see the existing tls.yml and skip the generation step.
+          copier copy --trust --defaults --overwrite ${{ matrix.scenario.data }} "$GITHUB_WORKSPACE" /tmp/render
+          new_mtime=$(stat -c %Y "$original_cert")
+          test "$original_mtime" = "$new_mtime" \
+            && echo "OK: cert mtime unchanged across re-render" \
+            || (echo "FAIL: cert was regenerated despite already existing" && exit 1)
