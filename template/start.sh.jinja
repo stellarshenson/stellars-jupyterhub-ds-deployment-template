@@ -20,7 +20,7 @@ for arg in "$@"; do
 done
 
 # Load defaults, then local overrides
-source .env.default
+source env.default
 if [[ -f .env ]]; then
     source .env
 fi
@@ -67,7 +67,7 @@ if [[ "$REFRESH" == "1" ]]; then
 fi
 
 # Build compose command
-COMPOSE_FILES="--env-file .env.default"
+COMPOSE_FILES="--env-file env.default"
 if [[ -f .env ]]; then
     COMPOSE_FILES="${COMPOSE_FILES} --env-file .env"
 fi

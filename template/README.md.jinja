@@ -32,7 +32,7 @@ Override either value via `.env` (untracked).
 {% if cifs_shared_mount -%}
   compose_cifs.yml                     # Optional CIFS NAS mount (enabled via ENABLE_CIFS=1)
 {%- endif %}
-  .env.default                         # Default environment variables (tracked)
+  env.default                          # Default environment variables (tracked)
   .env                                 # Local overrides (untracked)
   start.sh                             # Start the stack
   stop.sh                              # Stop the stack

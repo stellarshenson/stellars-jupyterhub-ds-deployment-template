@@ -5,7 +5,7 @@
 #   - compose_override.yml (Traefik wiring + branding env vars)
 #   - branding/ (logo / favicon / icon assets)
 #   - certs/ (self-signed cert scripts, optional)
-#   - .env.default / .env (operator settings)
+#   - env.default / .env (operator settings)
 #   - start.sh / stop.sh
 #
 # Upstream is cloned read-only on first start.sh, so the overlay stays
@@ -27,6 +27,10 @@ _exclude:
   - ".DS_Store"
   - ".ipynb_checkpoints"
   - "**/.ipynb_checkpoints"
+# Files rendered on first copy but never overwritten on `copier update` -
+# operators are expected to customise these locally.
+_skip_if_exists:
+  - ".env"
 _tasks:
   - "chmod +x start.sh stop.sh"
   - "chmod +x certs/certs_generate.sh"
@@ -139,6 +143,6 @@ idle_culler_enabled:
 
 cifs_shared_mount:
   type: bool
-  help: "Ship CIFS overlay (compose_cifs.yml + ENABLE_CIFS toggle in .env.default)."
+  help: "Ship CIFS overlay (compose_cifs.yml + ENABLE_CIFS toggle in env.default)."
   default: false
 

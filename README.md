@@ -33,12 +33,12 @@ Each default is computed from earlier answers where possible.
 ```
 my-jupyterhub/
   branding/                            # Logo, favicon, JupyterLab toolbar icon
-  certs/                               # Self-signed TLS scripts (if local TLS)
+  certs/                               # Self-signed TLS generator + rendered certs.params
   compose_override.yml                 # Branding env vars + Traefik wiring
-  compose_cifs.yml                     # Optional CIFS NAS mount
-  .env.default                         # Default env (tracked)
-  .env                                 # Local overrides (gitignored)
-  start.sh / stop.sh
+  compose_cifs.yml                     # Optional CIFS NAS mount (only if cifs_shared_mount=true)
+  env.default                          # Default env (tracked)
+  .env                                 # Local overrides (gitignored; takes precedence over env.default)
+  start.sh / stop.sh                   # First start.sh auto-generates a self-signed cert from certs/certs.params
   stellars-jupyterhub-ds/              # Upstream platform (cloned read-only on first start)
 ```
 

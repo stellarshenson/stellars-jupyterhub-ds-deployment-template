@@ -69,6 +69,7 @@ services:
       # main settings
       - JUPYTERHUB_BASE_URL=/
       - JUPYTERHUB_ADMIN={{ admin_username }} # initial admin username
+      - JUPYTERHUB_ADMIN_PASSWORD=${JUPYTERHUB_ADMIN_PASSWORD:-} # optional INITIAL admin password from .env; ignored once admin sets one in the UI
       - JUPYTERHUB_IDLE_CULLER_ENABLED={% if idle_culler_enabled %}1{% else %}0{% endif %} # culler 0=disabled, 1=enabled
       - JUPYTERHUB_IDLE_CULLER_MAX_EXTENSION=48 # max hours users can extend session
       - JUPYTERHUB_SIGNUP_ENABLED={% if signup_enabled %}1{% else %}0{% endif %} # user self-registration: 0=disabled, 1=enabled
