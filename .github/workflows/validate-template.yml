@@ -28,8 +28,8 @@ jobs:
               EXPECTED_SIGNUP_ENABLED: "0"
               EXPECTED_CIFS_ENABLED: "false"
               EXPECTED_CERT_CN: MY JUPYTERHUB Certificate
-              EXPECTED_CERT_SANS: "*.localhost,localhost"
-              EXPECTED_CERT_PREFIX: _.localhost
+              EXPECTED_CERT_SANS: "jupyterhub.localhost,localhost,traefik.localhost"
+              EXPECTED_CERT_PREFIX: jupyterhub.localhost
 
           - name: custom-branding
             data: '--data project_name="ACME AI Lab" --data base_hostname=lab.acme.example'
@@ -43,8 +43,8 @@ jobs:
               EXPECTED_SIGNUP_ENABLED: "0"
               EXPECTED_CIFS_ENABLED: "false"
               EXPECTED_CERT_CN: ACME AI LAB Certificate
-              EXPECTED_CERT_SANS: "*.localhost,localhost,*.lab.acme.example,lab.acme.example"
-              EXPECTED_CERT_PREFIX: _.localhost
+              EXPECTED_CERT_SANS: "jupyterhub.lab.acme.example,lab.acme.example,traefik.lab.acme.example,jupyterhub.localhost,localhost,traefik.localhost"
+              EXPECTED_CERT_PREFIX: jupyterhub.lab.acme.example
 
           - name: with-cifs
             data: "--data cifs_shared_mount=true"
@@ -58,8 +58,8 @@ jobs:
               EXPECTED_SIGNUP_ENABLED: "0"
               EXPECTED_CIFS_ENABLED: "true"
               EXPECTED_CERT_CN: MY JUPYTERHUB Certificate
-              EXPECTED_CERT_SANS: "*.localhost,localhost"
-              EXPECTED_CERT_PREFIX: _.localhost
+              EXPECTED_CERT_SANS: "jupyterhub.localhost,localhost,traefik.localhost"
+              EXPECTED_CERT_PREFIX: jupyterhub.localhost
 
           - name: ip-host
             data: "--data network_addressing=ip --data base_hostname=192.168.1.50"
@@ -73,8 +73,8 @@ jobs:
               EXPECTED_SIGNUP_ENABLED: "0"
               EXPECTED_CIFS_ENABLED: "false"
               EXPECTED_CERT_CN: MY JUPYTERHUB Certificate
-              EXPECTED_CERT_SANS: "*.localhost,localhost,192.168.1.50"
-              EXPECTED_CERT_PREFIX: _.localhost
+              EXPECTED_CERT_SANS: "192.168.1.50,localhost,traefik.localhost"
+              EXPECTED_CERT_PREFIX: "192.168.1.50"
 
           - name: signup-on
             data: "--data signup_enabled=true --data admin_username=alice"
@@ -88,8 +88,8 @@ jobs:
               EXPECTED_SIGNUP_ENABLED: "1"
               EXPECTED_CIFS_ENABLED: "false"
               EXPECTED_CERT_CN: MY JUPYTERHUB Certificate
-              EXPECTED_CERT_SANS: "*.localhost,localhost"
-              EXPECTED_CERT_PREFIX: _.localhost
+              EXPECTED_CERT_SANS: "jupyterhub.localhost,localhost,traefik.localhost"
+              EXPECTED_CERT_PREFIX: jupyterhub.localhost
 
     steps:
       - name: Checkout

@@ -38,7 +38,7 @@ skip() { echo "${YELLOW}SKIP${NC}: $*"; }
 # ---------------------------------------------------------------------------
 for f in start.sh stop.sh compose_override.yml env.default .env README.md \
          certs/certs.params certs/certs_generate.sh certs/tls.yml \
-         certs/certs_install.sh certs/certs_install.bat \
+         certs/certs_install.sh certs/certs_install.bat certs/README.md \
          .copier-answers.yml; do
     test -f "$f" || fail "$f missing"
 done
