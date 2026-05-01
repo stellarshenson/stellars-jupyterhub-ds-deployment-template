@@ -18,8 +18,73 @@ jobs:
         scenario:
           - name: defaults
             data: ""
+            env:
+              EXPECTED_PROJECT_NAME: My JupyterHub
+              EXPECTED_PROJECT_SLUG: my-jupyterhub
+              EXPECTED_BRANDING_PREFIX: my_jupyterhub
+              EXPECTED_BASE_HOSTNAME: localhost
+              EXPECTED_ADMIN_USERNAME: admin
+              EXPECTED_SIGNUP_ENABLED: "0"
+              EXPECTED_CIFS_ENABLED: "false"
+              EXPECTED_CERT_CN: MY JUPYTERHUB Certificate
+              EXPECTED_CERT_SANS: "*.localhost,localhost"
+              EXPECTED_CERT_PREFIX: _.localhost
+
+          - name: custom-branding
+            data: '--data project_name="ACME AI Lab" --data base_hostname=lab.acme.example'
+            env:
+              EXPECTED_PROJECT_NAME: ACME AI Lab
+              EXPECTED_PROJECT_SLUG: acme-ai-lab
+              EXPECTED_BRANDING_PREFIX: acme_ai_lab
+              EXPECTED_BASE_HOSTNAME: lab.acme.example
+              EXPECTED_ADMIN_USERNAME: admin
+              EXPECTED_SIGNUP_ENABLED: "0"
+              EXPECTED_CIFS_ENABLED: "false"
+              EXPECTED_CERT_CN: ACME AI LAB Certificate
+              EXPECTED_CERT_SANS: "*.lab.acme.example,lab.acme.example"
+              EXPECTED_CERT_PREFIX: _.lab.acme.example
+
           - name: with-cifs
             data: "--data cifs_shared_mount=true"
+            env:
+              EXPECTED_PROJECT_NAME: My JupyterHub
+              EXPECTED_PROJECT_SLUG: my-jupyterhub
+              EXPECTED_BRANDING_PREFIX: my_jupyterhub
+              EXPECTED_BASE_HOSTNAME: localhost
+              EXPECTED_ADMIN_USERNAME: admin
+              EXPECTED_SIGNUP_ENABLED: "0"
+              EXPECTED_CIFS_ENABLED: "true"
+              EXPECTED_CERT_CN: MY JUPYTERHUB Certificate
+              EXPECTED_CERT_SANS: "*.localhost,localhost"
+              EXPECTED_CERT_PREFIX: _.localhost
+
+          - name: ip-host
+            data: "--data base_hostname=192.168.1.50"
+            env:
+              EXPECTED_PROJECT_NAME: My JupyterHub
+              EXPECTED_PROJECT_SLUG: my-jupyterhub
+              EXPECTED_BRANDING_PREFIX: my_jupyterhub
+              EXPECTED_BASE_HOSTNAME: 192.168.1.50
+              EXPECTED_ADMIN_USERNAME: admin
+              EXPECTED_SIGNUP_ENABLED: "0"
+              EXPECTED_CIFS_ENABLED: "false"
+              EXPECTED_CERT_CN: MY JUPYTERHUB Certificate
+              EXPECTED_CERT_SANS: "192.168.1.50"
+              EXPECTED_CERT_PREFIX: "192.168.1.50"
+
+          - name: signup-on
+            data: "--data signup_enabled=true --data admin_username=alice"
+            env:
+              EXPECTED_PROJECT_NAME: My JupyterHub
+              EXPECTED_PROJECT_SLUG: my-jupyterhub
+              EXPECTED_BRANDING_PREFIX: my_jupyterhub
+              EXPECTED_BASE_HOSTNAME: localhost
+              EXPECTED_ADMIN_USERNAME: alice
+              EXPECTED_SIGNUP_ENABLED: "1"
+              EXPECTED_CIFS_ENABLED: "false"
+              EXPECTED_CERT_CN: MY JUPYTERHUB Certificate
+              EXPECTED_CERT_SANS: "*.localhost,localhost"
+              EXPECTED_CERT_PREFIX: _.localhost
 
     steps:
       - name: Checkout
@@ -38,130 +103,23 @@ jobs:
           rm -rf /tmp/render
           copier copy --trust --defaults ${{ matrix.scenario.data }} . /tmp/render
 
-      - name: Assert post-render overlay state
-        run: |
-          cd /tmp/render
-          # Static files - rendered as-is from template
-          test -f start.sh
-          test -f stop.sh
-          test -f compose_override.yml
-          test -f env.default
-          test -f .env
-          test -f README.md
-          test -f certs/certs.params
-          test -f certs/certs_generate.sh
-          test -d branding
-          # CIFS conditional file
-          if [ "${{ matrix.scenario.name }}" = "with-cifs" ]; then
-            test -f compose_cifs.yml
-          else
-            test ! -f compose_cifs.yml
-          fi
-
-      - name: Assert eager cert files exist and match configured params
-        run: |
-          cd /tmp/render
-          # Eager cert generation (`_tasks` in copier.yml) - the rendered
-          # overlay MUST contain a usable Traefik tls.yml plus cert/key pair
-          # WITHOUT any manual script invocation. Anything else and Traefik
-          # would serve its built-in default cert on first start.
-          tls_file=certs/tls.yml
-          cert_file=$(ls certs/*/cert.pem)
-          key_file=$(ls certs/*/key.pem)
-          test -f "$tls_file"
-          test -f "$cert_file"
-          test -f "$key_file"
-
-          # Cert content must reflect the CN and DNS altnames configured in
-          # certs.params. Anything else means certs_generate.sh ran with the
-          # wrong inputs (or didn't run at all and we got Traefik defaults).
-          # shellcheck disable=SC1091
-          source certs/certs.params
-          test -n "$CERTS_CN"
-          test -n "$CERTS_DNS_ALTNAMES"
-
-          subject=$(openssl x509 -in "$cert_file" -noout -subject)
-          echo "$subject" | grep -F "CN = $CERTS_CN" \
-            || { echo "FAIL: cert subject does not match CERTS_CN='$CERTS_CN'"; echo "got: $subject"; exit 1; }
-
-          sans=$(openssl x509 -in "$cert_file" -noout -ext subjectAltName)
-          IFS=',' read -ra altnames <<< "$CERTS_DNS_ALTNAMES"
-          for san in "${altnames[@]}"; do
-            san_trimmed=$(echo "$san" | xargs)
-            echo "$sans" | grep -F "DNS:$san_trimmed" \
-              || { echo "FAIL: cert SANs missing configured altname '$san_trimmed'"; echo "got: $sans"; exit 1; }
-          done
-
-          # Output folder must be derived from the first DNS altname, with
-          # `*` -> `_` (e.g. *.localhost -> _.localhost). tls.yml must
-          # reference that exact prefix.
-          first_dns=$(echo "$CERTS_DNS_ALTNAMES" | cut -d',' -f1 | xargs)
-          expected_prefix="${first_dns//\*/_}"
-          prefix_dir=$(basename "$(dirname "$cert_file")")
-          test "$prefix_dir" = "$expected_prefix" \
-            || { echo "FAIL: cert prefix '$prefix_dir' != expected '$expected_prefix' (from first altname '$first_dns')"; exit 1; }
-          grep -F "/certs/$prefix_dir/cert.pem" "$tls_file" \
-            || { echo "FAIL: tls.yml does not reference the rendered cert path"; cat "$tls_file"; exit 1; }
-          grep -F "/certs/$prefix_dir/key.pem" "$tls_file" \
-            || { echo "FAIL: tls.yml does not reference the rendered key path"; cat "$tls_file"; exit 1; }
-
-          # cert/key pair must match (same modulus)
-          cert_mod=$(openssl x509 -in "$cert_file" -noout -modulus | openssl md5)
-          key_mod=$(openssl rsa -in "$key_file" -noout -modulus 2>/dev/null | openssl md5)
-          test "$cert_mod" = "$key_mod" \
-            || { echo "FAIL: cert/key modulus mismatch (cert=$cert_mod key=$key_mod)"; exit 1; }
-
-          echo "OK: tls.yml + cert + key present, subject CN matches, all SANs present, prefix '$prefix_dir' matches first altname, cert/key pair valid"
-
-      - name: Assert compose ingest aligns with rendered files
-        run: |
-          cd /tmp/render
-          # Volume mounts must be present and point to rendered directories
-          grep -F "../certs:/certs:ro" compose_override.yml \
-            || { echo "FAIL: compose_override.yml missing certs volume mount"; exit 1; }
-          grep -F "../branding:/srv/branding:ro" compose_override.yml \
-            || { echo "FAIL: compose_override.yml missing branding volume mount"; exit 1; }
-
-          # Every JUPYTERHUB_*_URI=file:///srv/branding/<file> in the compose
-          # file MUST point to a real file in branding/. The volume mount
-          # maps branding/ to /srv/branding inside the container, so a typo
-          # or stale Jinja substitution would leave a broken URI.
-          missing=0
-          while read -r uri; do
-            filename=${uri#file:///srv/branding/}
-            test -f "branding/$filename" \
-              && echo "OK: branding/$filename referenced by compose" \
-              || { echo "FAIL: compose references file:///srv/branding/$filename but branding/$filename does not exist"; missing=$((missing+1)); }
-          done < <(grep -oE 'file:///srv/branding/[^ ]+' compose_override.yml)
-          test $missing -eq 0 || exit 1
-
-          # tls.yml's /certs/<prefix>/cert.pem reference must resolve to a
-          # real file (Traefik sees it at /certs/... via the bind mount; we
-          # check the same path under certs/ on the host).
-          tls_path=$(grep -oE '/certs/[^[:space:]]+/cert\.pem' certs/tls.yml | head -1)
-          test -n "$tls_path" \
-            || { echo "FAIL: certs/tls.yml has no /certs/.../cert.pem reference"; exit 1; }
-          local_path="${tls_path#/}"
-          test -f "$local_path" \
-            || { echo "FAIL: tls.yml references $tls_path but $local_path does not exist on disk"; exit 1; }
-          echo "OK: tls.yml -> $tls_path resolves to $local_path"
-
-          # Branding skeleton: the three filename slots must exist. Filenames
-          # are derived from `branding_prefix`; we read them out of compose
-          # to avoid hardcoding the slug.
-          for var in JUPYTERHUB_LOGO_URI JUPYTERHUB_FAVICON_URI JUPYTERHUB_LAB_MAIN_ICON_URI; do
-            grep -q "$var=file:///srv/branding/" compose_override.yml \
-              || { echo "FAIL: compose_override.yml missing $var"; exit 1; }
-          done
-          echo "OK: all three branding URIs present in compose"
+      - name: Run integration assertions
+        env:
+          EXPECTED_PROJECT_NAME: ${{ matrix.scenario.env.EXPECTED_PROJECT_NAME }}
+          EXPECTED_PROJECT_SLUG: ${{ matrix.scenario.env.EXPECTED_PROJECT_SLUG }}
+          EXPECTED_BRANDING_PREFIX: ${{ matrix.scenario.env.EXPECTED_BRANDING_PREFIX }}
+          EXPECTED_BASE_HOSTNAME: ${{ matrix.scenario.env.EXPECTED_BASE_HOSTNAME }}
+          EXPECTED_ADMIN_USERNAME: ${{ matrix.scenario.env.EXPECTED_ADMIN_USERNAME }}
+          EXPECTED_SIGNUP_ENABLED: ${{ matrix.scenario.env.EXPECTED_SIGNUP_ENABLED }}
+          EXPECTED_CIFS_ENABLED: ${{ matrix.scenario.env.EXPECTED_CIFS_ENABLED }}
+          EXPECTED_CERT_CN: ${{ matrix.scenario.env.EXPECTED_CERT_CN }}
+          EXPECTED_CERT_SANS: ${{ matrix.scenario.env.EXPECTED_CERT_SANS }}
+          EXPECTED_CERT_PREFIX: ${{ matrix.scenario.env.EXPECTED_CERT_PREFIX }}
+        run: bash tests/test_render.sh /tmp/render
 
       - name: Assert idempotent re-render (existing cert is preserved)
         run: |
-          cd /tmp/render
-          original_mtime=$(stat -c %Y certs/tls.yml)
-          cd /
-          # Re-run copier in --overwrite mode; the _tasks shell guard must
-          # see the existing tls.yml and skip the generation step.
+          original_mtime=$(stat -c %Y /tmp/render/certs/tls.yml)
           copier copy --trust --defaults --overwrite ${{ matrix.scenario.data }} "$GITHUB_WORKSPACE" /tmp/render
           new_mtime=$(stat -c %Y /tmp/render/certs/tls.yml)
           test "$original_mtime" = "$new_mtime" \
