@@ -83,7 +83,7 @@ _message_after_copy: |2
 # ── Identity ─────────────────────────────────────────────────────────────────
 project_name:
   type: str
-  help: "Display name for this deployment (e.g. 'Actone AI Hub')."
+  help: "Display name for this deployment (e.g. 'ACME AI Lab')."
   default: "My JupyterHub"
 
 project_slug:

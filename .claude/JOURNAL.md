@@ -21,3 +21,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 6. **Task - Release v1.0.7** (v1.0.7): Fix render-time cert gap; rewrite CI gate that masked it<br>
    **Result**: Two coupled changes. `copier.yml` `_tasks` now invokes `(cd certs && bash certs_generate.sh)` during `copier copy --trust`, guarded by `[ -n "$(ls certs/*.tls.yml 2>/dev/null)" ] || ...` for idempotent `copier update`. Fresh overlay has tls.yml + cert/key immediately, no wait for first `./start.sh`. `.github/workflows/validate-template.yml` old smoke-test ran `certs_generate.sh` manually then asserted output - a tautology that masked the rendering gap. New step asserts post-render state directly: tls.yml + cert + key present, subject CN equals CERTS_CN, every CERTS_DNS_ALTNAMES in SANs, tls.yml paths reference the rendered prefix, cert/key modulus match. Separate idempotency step verifies re-render preserves cert mtime. Bumped 1.0.6 -> 1.0.7, tagged, pushed.
+
+7. **Task - Release v1.0.8** (v1.0.8): Doc fix bundled with patch bump<br>
+   **Result**: Replaced the `Actone AI Hub` example in `copier.yml`'s `project_name` help text with the generic `ACME AI Lab` (Actone is a specific client name; ACME is the conventional placeholder for templated examples). Bumped pyproject.toml 1.0.7 -> 1.0.8, tagged v1.0.8, pushed branch + tag.
