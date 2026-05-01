@@ -63,7 +63,7 @@ bash certs/certs_generate.sh
 bash certs/certs_generate.sh --cn "Custom CN" --dns-altnames "x.example.com,*.example.com"
 ```
 
-If you change the CN, the new cert goes into a new `certs/<new-prefix>/` directory and a new `certs/<new-prefix>.tls.yml`. Delete the old pair to avoid confusion.
+If you change `CERTS_DNS_ALTNAMES`, the new cert/key pair goes into a new `certs/<new-prefix>/` directory (prefix is derived from the first altname, with `*` replaced by `_`). The fixed `certs/tls.yml` is overwritten in place. Delete the stale `certs/<old-prefix>/` directory if you want to clean up.
 
 To install the generated cert into your OS trust store (so browsers stop warning), use the standalone helper that ships alongside the template:
 

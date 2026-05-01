@@ -34,10 +34,10 @@ _skip_if_exists:
 _tasks:
   - "chmod +x start.sh stop.sh"
   - "chmod +x certs/certs_generate.sh"
-  # Generate the self-signed cert eagerly so the rendered overlay has *.tls.yml
-  # immediately. The shell guard makes the task idempotent on `copier update`:
-  # if a cert is already present, regeneration is skipped.
-  - "[ -n \"$(ls certs/*.tls.yml 2>/dev/null)\" ] || (cd certs && bash certs_generate.sh)"
+  # Generate the self-signed cert eagerly so the rendered overlay has
+  # certs/tls.yml immediately. The shell guard makes the task idempotent
+  # on `copier update`: if tls.yml is already present, regeneration is skipped.
+  - "[ -f certs/tls.yml ] || (cd certs && bash certs_generate.sh)"
 _message_after_copy: |2
 
     ╔══════════════════════════════════════════════════════════════════╗

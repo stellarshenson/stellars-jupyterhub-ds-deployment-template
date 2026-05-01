@@ -14,14 +14,14 @@
 # Options:
 #   --cn <name>                Certificate Common Name (CN)
 #   --dns-altnames <domains>   Comma-separated DNS SANs
-#   --output-prefix <prefix>   Prefix for output folder and tls.yml
+#   --output-prefix <prefix>   Prefix for the cert/key output folder
 #                              (default: CN lowercase, spaces to hyphens)
 #   -h, --help                 Show this help message
 #
 # Creates:
 #   <prefix>/cert.pem   - Certificate
 #   <prefix>/key.pem    - Private key
-#   <prefix>.tls.yml    - Traefik TLS configuration
+#   tls.yml             - Traefik TLS configuration (fixed name; overwritten on regen)
 #
 # =============================================================================
 
@@ -44,14 +44,14 @@ CLI args take precedence and DISABLE the params-file fallback.
 Options:
   --cn <name>                Certificate Common Name (CN)
   --dns-altnames <domains>   Comma-separated DNS SANs
-  --output-prefix <prefix>   Prefix for output folder and tls.yml
+  --output-prefix <prefix>   Prefix for the cert/key output folder
                              (default: CN lowercase, spaces to hyphens)
   -h, --help                 Show this help message
 
 Creates:
   <script-dir>/<prefix>/cert.pem   - Certificate
   <script-dir>/<prefix>/key.pem    - Private key
-  <script-dir>/<prefix>.tls.yml    - Traefik TLS configuration
+  <script-dir>/tls.yml             - Traefik TLS configuration (fixed name)
 
 Examples:
   ./certs_generate.sh
@@ -115,13 +115,16 @@ if [ -z "$DNS_ALTNAMES" ]; then
     exit 1
 fi
 
-# Default prefix: based on CN (lowercase, spaces to hyphens)
+# Default prefix: derived from the first DNS altname with `*` -> `_`
+# (e.g. "*.localhost" -> "_.localhost", "*.lab.example.com" -> "_.lab.example.com").
+# Matches the parent stellars-tech.eu pattern.
 if [ -z "$OUTPUT_PREFIX" ]; then
-    OUTPUT_PREFIX=$(echo "$CN" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
+    first_dns=$(echo "$DNS_ALTNAMES" | cut -d',' -f1 | xargs)
+    OUTPUT_PREFIX="${first_dns//\*/_}"
 fi
 
 CERT_DIR="$SCRIPT_DIR/${OUTPUT_PREFIX}"
-TLS_CONFIG="$SCRIPT_DIR/${OUTPUT_PREFIX}.tls.yml"
+TLS_CONFIG="$SCRIPT_DIR/tls.yml"
 
 # Build SAN string with DNS: prefixes
 SAN_STRING=""
