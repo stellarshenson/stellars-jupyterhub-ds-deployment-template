@@ -88,7 +88,7 @@ project_name:
 
 project_slug:
   type: str
-  help: "Lower-kebab slug used as COMPOSE_PROJECT_NAME and the deployment directory name. Allowed characters: lowercase letters, digits, underscore, hyphen."
+  help: "Short URL-friendly identifier for this deployment (used as the directory name and to namespace docker resources). Allowed characters: lowercase letters, digits, underscore, hyphen."
   default: "{{ project_name | lower | replace(' ', '-') | replace('_', '-') }}"
   validator: >-
     {% if not (project_slug | regex_search('^[a-z0-9_-]+$')) %}

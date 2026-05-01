@@ -36,3 +36,6 @@ This journal tracks substantive work on documents, diagrams, and documentation c
 
 11. **Task - Release v1.0.12** (v1.0.12): Render .copier-answers.yml so `copier update` works<br>
     **Result**: Copier 9.x does not auto-write the answers file — the template author must provide a Jinja at `template/{{ _copier_conf.answers_file }}.jinja`. We had none, so every render produced no `.copier-answers.yml`, leaving operators unable to run `copier update --trust` against their overlay. Added the Jinja rendering `_copier_answers|to_nice_yaml` (with a "do not edit, commit me" preamble) plus integration test assertions covering presence of the file and matching `project_name` / `project_slug` / `branding_prefix` / `base_hostname` / `admin_username` / `cifs_shared_mount` values. Verified locally end-to-end. Bumped 1.0.11 -> 1.0.12, tagged, pushed.
+
+12. **Task - Release v1.0.13** (v1.0.13): Drop docker env-var jargon from project_slug prompt<br>
+    **Result**: Rewrote `copier.yml` `project_slug` help text — was "Lower-kebab slug used as COMPOSE_PROJECT_NAME and the deployment directory name", which leaks the docker compose env-var name into the interview. Now reads "Short URL-friendly identifier for this deployment (used as the directory name and to namespace docker resources)". Same constraint, plain language. Bumped 1.0.12 -> 1.0.13, tagged, pushed.
