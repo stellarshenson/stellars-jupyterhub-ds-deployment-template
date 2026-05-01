@@ -34,7 +34,7 @@ _skip_if_exists:
   - "branding/*"
 _tasks:
   - "chmod +x start.sh stop.sh"
-  - "chmod +x certs/certs_generate.sh"
+  - "chmod +x certs/certs_generate.sh certs/certs_install.sh"
   # Eager cert generation on initial `copier copy` only. On `copier update`
   # copier renders into temp dirs to compute a 3-way diff; any cert
   # generated there ends up in the diff and would propose overwriting the

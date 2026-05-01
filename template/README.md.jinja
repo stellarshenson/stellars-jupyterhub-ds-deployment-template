@@ -27,6 +27,8 @@ Override either value via `.env` (untracked).
     {{ branding_prefix }}_favicon.ico        # Browser tab favicon
   certs/                               # Self-signed TLS certificates
     certs_generate.sh                  # Cert generator (zero args -> sources certs.params; --cn / --dns-altnames CLI override)
+    certs_install.sh                   # Install rendered cert into the OS trust store (Linux/macOS)
+    certs_install.bat                  # Install rendered cert into the OS trust store (Windows)
     certs.params                       # CN + DNS altnames (rendered by copier; editable)
   compose_override.yml                 # Branding env vars + local reverse proxy
 {% if cifs_shared_mount -%}
@@ -65,15 +67,17 @@ bash certs/certs_generate.sh --cn "Custom CN" --dns-altnames "x.example.com,*.ex
 
 If you change `CERTS_DNS_ALTNAMES`, the new cert/key pair goes into a new `certs/<new-prefix>/` directory (prefix is derived from the first altname, with `*` replaced by `_`). The fixed `certs/tls.yml` is overwritten in place. Delete the stale `certs/<old-prefix>/` directory if you want to clean up.
 
-To install the generated cert into your OS trust store (so browsers stop warning), use the standalone helper that ships alongside the template:
+To install the generated cert into your OS trust store (so browsers stop warning), use the bundled installer:
 
 ```bash
-# Linux / macOS - from a clone of the template repo
-./extra/certs-installer/install_cert.sh /path/to/my-jupyterhub/certs/<prefix>/cert.pem
+# Linux / macOS - sudo prompts for system-wide trust install
+bash certs/certs_install.sh certs/
 
-# Windows
-extra\certs-installer\install_cert.bat C:\path\to\my-jupyterhub\certs\<prefix>\cert.pem
+# Windows (Admin PowerShell or cmd)
+certs\certs_install.bat certs\
 ```
+
+The scripts scan the given directory for `*.pem` / `*.crt` / `*.cer` / `*.der` files and add them to the system trust store. Pass `--help` for full options.
 
 The helpers live in [copier-stellars-jupyterhub-ds/extra/certs-installer](https://github.com/stellarshenson/copier-stellars-jupyterhub-ds/tree/main/extra/certs-installer) and are intentionally not copied into the deployment.
 
