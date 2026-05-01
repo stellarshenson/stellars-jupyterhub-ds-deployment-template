@@ -75,7 +75,8 @@ if [[ -n "${EXPECTED_BRANDING_PREFIX:-}" ]]; then
         || fail "branding/${EXPECTED_BRANDING_PREFIX}_logo.png missing"
     test -f "branding/${EXPECTED_BRANDING_PREFIX}_main_icon.svg" \
         || fail "branding/${EXPECTED_BRANDING_PREFIX}_main_icon.svg missing"
-    test -f branding/favicon.ico || fail "branding/favicon.ico missing"
+    test -f "branding/${EXPECTED_BRANDING_PREFIX}_favicon.ico" \
+        || fail "branding/${EXPECTED_BRANDING_PREFIX}_favicon.ico missing"
     ok "branding files use prefix '${EXPECTED_BRANDING_PREFIX}'"
 else
     skip "EXPECTED_BRANDING_PREFIX unset; not asserting branding filenames"
@@ -103,8 +104,8 @@ for var in JUPYTERHUB_LOGO_URI JUPYTERHUB_FAVICON_URI JUPYTERHUB_LAB_MAIN_ICON_U
                     || fail "$var filename '$filename' != '${EXPECTED_BRANDING_PREFIX}_main_icon.svg'"
                 ;;
             JUPYTERHUB_FAVICON_URI)
-                [[ "$filename" = "favicon.ico" ]] \
-                    || fail "$var filename '$filename' != 'favicon.ico'"
+                [[ "$filename" = "${EXPECTED_BRANDING_PREFIX}_favicon.ico" ]] \
+                    || fail "$var filename '$filename' != '${EXPECTED_BRANDING_PREFIX}_favicon.ico'"
                 ;;
         esac
     fi

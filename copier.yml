@@ -31,6 +31,7 @@ _exclude:
 # operators are expected to customise these locally.
 _skip_if_exists:
   - ".env"
+  - "branding/*"
 _tasks:
   - "chmod +x start.sh stop.sh"
   - "chmod +x certs/certs_generate.sh"
@@ -38,6 +39,25 @@ _tasks:
   # certs/tls.yml immediately. The shell guard makes the task idempotent
   # on `copier update`: if tls.yml is already present, regeneration is skipped.
   - "[ -f certs/tls.yml ] || (cd certs && bash certs_generate.sh)"
+  # If the operator dropped their own branding images into branding/ with
+  # filenames that don't match the template prefix, remove the matching
+  # template default. Per-type: a non-prefix .png removes the default logo,
+  # a non-prefix .svg removes the default main_icon, a non-prefix .ico
+  # removes the default favicon. _skip_if_exists handles the same-name case.
+  - |
+    cd branding
+    if find . -maxdepth 1 -type f -iname '*.png' ! -name '{{ branding_prefix }}_*' 2>/dev/null | grep -q . && [ -f '{{ branding_prefix }}_logo.png' ]; then
+        rm -f '{{ branding_prefix }}_logo.png'
+        echo "Operator-provided PNG detected; removed template default {{ branding_prefix }}_logo.png"
+    fi
+    if find . -maxdepth 1 -type f -iname '*.svg' ! -name '{{ branding_prefix }}_*' 2>/dev/null | grep -q . && [ -f '{{ branding_prefix }}_main_icon.svg' ]; then
+        rm -f '{{ branding_prefix }}_main_icon.svg'
+        echo "Operator-provided SVG detected; removed template default {{ branding_prefix }}_main_icon.svg"
+    fi
+    if find . -maxdepth 1 -type f -iname '*.ico' ! -name '{{ branding_prefix }}_*' 2>/dev/null | grep -q . && [ -f '{{ branding_prefix }}_favicon.ico' ]; then
+        rm -f '{{ branding_prefix }}_favicon.ico'
+        echo "Operator-provided ICO detected; removed template default {{ branding_prefix }}_favicon.ico"
+    fi
 _message_after_copy: |2
 
     ╔══════════════════════════════════════════════════════════════════╗

@@ -78,7 +78,7 @@ services:
 
       # branding ({{ project_name }})
       - JUPYTERHUB_LOGO_URI=file:///srv/branding/{{ branding_prefix }}_logo.png
-      - JUPYTERHUB_FAVICON_URI=file:///srv/branding/favicon.ico
+      - JUPYTERHUB_FAVICON_URI=file:///srv/branding/{{ branding_prefix }}_favicon.ico
       - JUPYTERHUB_LAB_MAIN_ICON_URI=file:///srv/branding/{{ branding_prefix }}_main_icon.svg
       - JUPYTERLAB_SYSTEM_NAME={{ project_name }}
       - JUPYTERLAB_HEADER_CAPITALIZE_SYSTEM_NAME=1
