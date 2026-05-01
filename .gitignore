@@ -1,0 +1,14 @@
+# Python tooling artefacts (this repo is a Copier template, not a Python package)
+uv.lock
+.venv/
+__pycache__/
+*.py[co]
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Test renders
+/tmp/

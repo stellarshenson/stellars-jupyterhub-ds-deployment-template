@@ -3,7 +3,13 @@
 # Generate self-signed certificate with custom CN and SAN entries
 # =============================================================================
 #
-# Usage: ./certs_generate.sh --cn <name> --dns-altnames <domains> [--output-prefix <prefix>]
+# Usage:
+#   ./certs_generate.sh                                       # use certs.params (sibling file)
+#   ./certs_generate.sh --cn <name> --dns-altnames <domains>  # explicit CLI args
+#
+# When invoked with NO arguments, sources certs.params from the same
+# directory and uses CERTS_CN / CERTS_DNS_ALTNAMES / CERTS_OUTPUT_PREFIX.
+# CLI args take precedence and DISABLE the params-file fallback.
 #
 # Options:
 #   --cn <name>                Certificate Common Name (CN)
@@ -27,7 +33,13 @@ show_help() {
     cat << 'EOF'
 Generate self-signed certificate with custom CN and SAN entries
 
-Usage: certs_generate.sh --cn <name> --dns-altnames <domains> [--output-prefix <prefix>]
+Usage:
+  certs_generate.sh                                       # use certs.params (sibling file)
+  certs_generate.sh --cn <name> --dns-altnames <domains>  # explicit CLI args
+
+When invoked with NO arguments, sources certs.params from the same
+directory and uses CERTS_CN / CERTS_DNS_ALTNAMES / CERTS_OUTPUT_PREFIX.
+CLI args take precedence and DISABLE the params-file fallback.
 
 Options:
   --cn <name>                Certificate Common Name (CN)
@@ -42,7 +54,8 @@ Creates:
   <script-dir>/<prefix>.tls.yml    - Traefik TLS configuration
 
 Examples:
-  ./certs_generate.sh --cn "DEV Certificate" --dns-altnames "*.example.com,example.com,*.localhost,localhost"
+  ./certs_generate.sh
+  ./certs_generate.sh --cn "DEV Certificate" --dns-altnames "*.example.com,example.com"
   ./certs_generate.sh --cn "My Cert" --dns-altnames "*.lab.local,lab.local" --output-prefix my-certs
 EOF
     exit 0
@@ -52,11 +65,24 @@ CN=""
 DNS_ALTNAMES=""
 OUTPUT_PREFIX=""
 
+# Show help BEFORE sourcing certs.params (so --help works even if params is malformed/missing).
+for arg in "$@"; do
+    case "$arg" in
+        -h|--help) show_help ;;
+    esac
+done
+
+# If no CLI args at all, source certs.params (rendered by copier) for CN + altnames.
+if [ $# -eq 0 ] && [ -f "$SCRIPT_DIR/certs.params" ]; then
+    # shellcheck disable=SC1091
+    source "$SCRIPT_DIR/certs.params"
+    CN="${CERTS_CN:-}"
+    DNS_ALTNAMES="${CERTS_DNS_ALTNAMES:-}"
+    OUTPUT_PREFIX="${CERTS_OUTPUT_PREFIX:-}"
+fi
+
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -h|--help)
-            show_help
-            ;;
         --cn)
             CN="$2"
             shift 2
@@ -78,13 +104,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ -z "$CN" ]; then
-    echo "Error: --cn is required"
+    echo "Error: CN is required (provide via --cn or set CERTS_CN in certs.params)"
     echo "Use --help for usage information."
     exit 1
 fi
 
 if [ -z "$DNS_ALTNAMES" ]; then
-    echo "Error: --dns-altnames is required"
+    echo "Error: DNS altnames are required (provide via --dns-altnames or set CERTS_DNS_ALTNAMES in certs.params)"
     echo "Use --help for usage information."
     exit 1
 fi

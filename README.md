@@ -4,8 +4,6 @@
 [![Brought To You By KOLOMOLO](https://img.shields.io/badge/Brought%20To%20You%20By-KOLOMOLO-00ffff?style=flat)](https://kolomolo.com)
 [![Donate PayPal](https://img.shields.io/badge/Donate-PayPal-blue?style=flat)](https://www.paypal.com/donate/?hosted_button_id=B4KPBJDLLXTSA)
 
-Source: [stellarshenson/copier-stellars-jupyterhub-ds](https://github.com/stellarshenson/copier-stellars-jupyterhub-ds)
-
 [Copier](https://copier.readthedocs.io/) template that scaffolds a thin
 deployment overlay for [stellars-jupyterhub-ds](https://github.com/stellarshenson/stellars-jupyterhub-ds)
 (the upstream JupyterHub platform).

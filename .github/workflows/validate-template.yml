@@ -58,3 +58,11 @@ jobs:
           else
             test ! -f compose_cifs.yml
           fi
+
+      - name: Smoke-test cert generation
+        run: |
+          cd /tmp/render/certs
+          # Zero-arg invocation reads certs.params (same as start.sh's bootstrap)
+          bash certs_generate.sh
+          ls *.tls.yml */cert.pem */key.pem
+          openssl x509 -in */cert.pem -noout -subject -ext subjectAltName

@@ -26,8 +26,8 @@ Override either value via `.env` (untracked).
     {{ branding_prefix }}_main_icon.svg
     favicon.ico
   certs/                               # Self-signed TLS certificates
-    certs_generate.sh                  # Generate cert + tls.yml
-    certs.params                       # CN + DNS altnames (sourced by start.sh on first run)
+    certs_generate.sh                  # Cert generator (zero args -> sources certs.params; --cn / --dns-altnames CLI override)
+    certs.params                       # CN + DNS altnames (rendered by copier; editable)
   compose_override.yml                 # Branding env vars + local reverse proxy
 {% if cifs_shared_mount -%}
   compose_cifs.yml                     # Optional CIFS NAS mount (enabled via ENABLE_CIFS=1)
@@ -53,7 +53,17 @@ Just run:
 ./start.sh
 ```
 
-To regenerate the cert later (e.g. after editing `certs/certs.params`), delete `certs/*.tls.yml` and the matching `certs/<prefix>/` directory, then re-run `./start.sh`.
+To regenerate the cert manually:
+
+```bash
+# Use the rendered defaults in certs/certs.params (edit it first if you want different values)
+bash certs/certs_generate.sh
+
+# Or override on the command line for a one-off
+bash certs/certs_generate.sh --cn "Custom CN" --dns-altnames "x.example.com,*.example.com"
+```
+
+If you change the CN, the new cert goes into a new `certs/<new-prefix>/` directory and a new `certs/<new-prefix>.tls.yml`. Delete the old pair to avoid confusion.
 
 To install the generated cert into your OS trust store (so browsers stop warning), use the standalone helper that ships alongside the template:
 

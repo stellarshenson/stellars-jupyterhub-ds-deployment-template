@@ -26,17 +26,20 @@ if [[ -f .env ]]; then
 fi
 
 # Bootstrap self-signed TLS cert on first run.
-# Traefik's file provider watches certs/ for *.tls.yml. If no tls.yml is
-# present, source the rendered params and let certs_generate.sh produce the
-# cert pair plus the matching tls.yml. Skipped silently on subsequent runs.
+# Traefik's file provider watches certs/ for *.tls.yml; if none is present,
+# call certs_generate.sh with no args (sources certs/certs.params for CN +
+# altnames). Skip silently on subsequent runs.
 if ! ls certs/*.tls.yml >/dev/null 2>&1; then
-    if [[ -f certs/certs.params && -x certs/certs_generate.sh ]]; then
-        echo "No TLS cert found in certs/ - generating from certs/certs.params..."
-        # shellcheck disable=SC1091
-        source certs/certs.params
-        (cd certs && ./certs_generate.sh --cn "$CERTS_CN" --dns-altnames "$CERTS_DNS_ALTNAMES")
-    else
-        echo "WARNING: no TLS cert in certs/ and certs/certs.params or certs/certs_generate.sh missing - Traefik will fall back to its built-in self-signed default." >&2
+    if [[ ! -f certs/certs_generate.sh ]]; then
+        echo "ERROR: certs/certs_generate.sh not found - cannot bootstrap TLS cert." >&2
+        echo "       Re-run 'copier copy --trust' or 'copier update --trust' to render it." >&2
+        exit 1
+    fi
+    echo "No TLS cert found in certs/ - generating from certs/certs.params..."
+    (cd certs && bash certs_generate.sh)
+    if ! ls certs/*.tls.yml >/dev/null 2>&1; then
+        echo "ERROR: cert generation completed but no certs/*.tls.yml was produced." >&2
+        exit 1
     fi
 fi
 
