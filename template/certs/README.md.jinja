@@ -1,0 +1,76 @@
+# Cert directory
+
+Self-signed TLS cert for **{{ project_name }}**. Generated on first `./start.sh` run by `certs_generate.sh`, reading `certs.params` for CN and SANs.
+
+## This deployment's current cert config
+
+Rendered into `certs.params`:
+
+| Setting | Value |
+|---|---|
+| `CERTS_CN` | `{{ cert_common_name }}` |
+| `CERTS_DNS_ALTNAMES` | `{{ cert_dns_altnames }}` |
+| Network addressing | `{{ network_addressing }}` ({% if network_addressing == 'dns' %}DNS hostname; subdomain routing supported{% else %}bare IP; subdomain only applies to localhost-side access{% endif %}) |
+| Base hostname | `{{ base_hostname }}` |
+| JupyterHub subdomain | `{{ jupyterhub_subdomain or '(empty - root host)' }}` |
+
+The cert covers each SAN entry **exactly** — no wildcards. Each URL the deployment exposes is enumerated. To add or change SANs, edit `certs.params` and re-run cert generation (see below).
+
+## Files in this directory
+
+- `certs.params` — comma-separated SAN list and CN. Single source of truth for what the cert covers. Edit this to change.
+- `certs_generate.sh` — generator. Reads `certs.params` (no args) or accepts `--cn` / `--dns-altnames` / `--output-prefix` to override.
+- `tls.yml` — Traefik file-provider config pointing at the rendered cert/key. Overwritten on every regeneration.
+- `<prefix>/cert.pem`, `<prefix>/key.pem` — the cert pair. Prefix is the first SAN entry (with `*` → `_` if you use wildcards).
+- `certs_install.sh` / `certs_install.bat` — install the cert into the OS trust store so browsers stop warning.
+
+## Regenerating after changing `certs.params`
+
+```bash
+rm -rf certs/<old-prefix>/ certs/tls.yml      # delete stale cert/key + tls.yml
+bash certs/certs_generate.sh                  # regenerate from certs.params
+bash certs/certs_install.sh certs/            # (optional) install into OS trust store
+```
+
+## Wildcards: what works, what doesn't
+
+OpenSSL 3.x and most browsers reject **single-label wildcards** because they treat the trailing label as TLD-like — same security rule that prevents `*.com`. "Single-label" means there is only one label after the `*`:
+
+| SAN pattern | Labels after `*` | Works in OpenSSL/curl/browsers? |
+|---|---|---|
+| `*.lab.example.com` | 2 (`lab`, `example.com`) | ✅ matches `foo.lab.example.com` |
+| `*.example.com` | 2 (`example`, `com`) | ✅ matches `foo.example.com` |
+| `*.localhost` | 1 (`localhost`) | ❌ rejected as TLD-like |
+| `*.app.localhost` | 2 (`app`, `localhost`) | ✅ matches `foo.app.localhost` |
+
+Test any cert against any hostname:
+
+```bash
+openssl x509 -in <prefix>/cert.pem -noout -checkhost <hostname>
+# "Hostname X does match certificate" → good
+# "Hostname X does NOT match certificate" → won't validate in any OpenSSL-backed client
+```
+
+### How to configure wildcard SANs
+
+Edit `certs.params`:
+
+**Multi-label DNS host** (works):
+
+```bash
+CERTS_DNS_ALTNAMES="*.lab.example.com,lab.example.com,localhost"
+```
+
+Covers `anything.lab.example.com` plus the bare `lab.example.com` plus `localhost`.
+
+**Localhost-side wildcard via fake intermediate label** (works):
+
+```bash
+CERTS_DNS_ALTNAMES="*.app.localhost,app.localhost,localhost"
+```
+
+Then access via `https://hub.app.localhost/`, `https://traefik.app.localhost/`, etc. You'd also need to update `compose_override.yml` Traefik routes and `JUPYTERHUB_PREFIX` in `env.default` / `.env` to use `app.localhost` rather than the default.
+
+**IP host** — wildcards are not allowed on IP SANs per RFC 5280. Leave the IP as-is and use exact subdomain entries on the localhost side.
+
+After editing, regenerate as shown above. Wildcards in the first SAN change the prefix folder name (`*.lab.example.com` → `_.lab.example.com/`).

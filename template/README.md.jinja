@@ -10,15 +10,40 @@ Local deployment overlay of [stellars-jupyterhub-ds](https://github.com/stellars
 
 ## Access
 
-- `BASE_HOSTNAME={{ base_hostname }}` - root domain
-- `JUPYTERHUB_PREFIX={% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}` - subdomain prefix (empty = root)
-- Network addressing mode: `{{ network_addressing }}` ({% if network_addressing == 'dns' %}DNS hostname; subdomain routing supported{% else %}bare IP; subdomain routing NOT possible{% endif %})
+Configuration:
 
-Default URL: `https://{% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}{{ base_hostname }}/`
-{% if network_addressing == 'ip' %}
-Subdomain URLs (`https://X.{{ base_hostname }}/`) won't resolve because IP addresses don't have DNS subdomains. The deployment is reachable only at the root URL above. Local subdomain access still works on the host machine via `https://{% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}localhost/` because `*.localhost` is always included in the cert.
+- Network addressing: `{{ network_addressing }}` ({% if network_addressing == 'dns' %}DNS hostname{% else %}bare IP{% endif %})
+- `BASE_HOSTNAME={{ base_hostname }}`
+- `JUPYTERHUB_PREFIX={% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}`
+
+URLs you can hit (all use the bundled self-signed cert; covered SANs are listed in `certs/certs.params`):
+
+| URL | Reachable from | Purpose |
+|---|---|---|
+{% if network_addressing == 'dns' -%}
+{% if jupyterhub_subdomain -%}
+| `https://{{ jupyterhub_subdomain }}.{{ base_hostname }}/` | clients on the network | JupyterHub (configured access) |
+{% else -%}
+| `https://{{ base_hostname }}/` | clients on the network | JupyterHub (configured access at root) |
+{% endif -%}
+| `https://traefik.{{ base_hostname }}/` | clients on the network | Traefik dashboard |
+{% if base_hostname != 'localhost' -%}
+{% if jupyterhub_subdomain -%}
+| `https://{{ jupyterhub_subdomain }}.localhost/` | host machine only | JupyterHub via localhost |
+{% endif -%}
+| `https://localhost/` | host machine only | bare localhost root |
+| `https://traefik.localhost/` | host machine only | Traefik dashboard via localhost |
+{% endif -%}
+{% else -%}
+| `https://{{ base_hostname }}/` | clients on the network | JupyterHub (configured access at root - IP can't carry subdomain) |
+{% if jupyterhub_subdomain -%}
+| `https://{{ jupyterhub_subdomain }}.localhost/` | host machine only | JupyterHub via localhost subdomain |
+{% endif -%}
+| `https://localhost/` | host machine only | bare localhost root |
+| `https://traefik.localhost/` | host machine only | Traefik dashboard via localhost |
 {% endif %}
-Override either value via `.env` (untracked).
+
+Override the env values via `.env` (untracked) if you need to change the routing without re-running copier.{% if network_addressing == 'ip' %} Subdomain URLs of the IP itself (`https://X.{{ base_hostname }}/`) cannot work — IPs have no DNS subdomains.{% endif %}
 
 ## Structure
 

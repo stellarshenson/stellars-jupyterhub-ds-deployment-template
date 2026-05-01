@@ -89,8 +89,15 @@ services:
     labels:
       - "traefik.enable=true"
 
-      # JupyterHub router
+      # JupyterHub router. In IP mode the subdomain prefix never applies to
+      # the IP itself (IPs can't carry subdomains), so route bare IP plus the
+      # localhost subdomain via the regex. In DNS mode keep the standard
+      # subdomain.<base> routing.
+{%- if network_addressing == 'ip' %}
+      - "traefik.http.routers.jupyterhub-rtr.rule=Host(`${BASE_HOSTNAME}`) || HostRegexp(`^${JUPYTERHUB_PREFIX}(.*\\.)?localhost$`)"
+{%- else %}
       - "traefik.http.routers.jupyterhub-rtr.rule=Host(`${JUPYTERHUB_PREFIX}${BASE_HOSTNAME}`) || HostRegexp(`^${JUPYTERHUB_PREFIX}(.*\\.)?localhost$`)"
+{%- endif %}
       - "traefik.http.routers.jupyterhub-rtr.entrypoints=websecure"
       - "traefik.http.routers.jupyterhub-rtr.tls=true"
       - "traefik.http.routers.jupyterhub-rtr.service=jupyterhub-svc"
