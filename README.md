@@ -13,6 +13,60 @@ hostname / TLS, admin user, optional CIFS - and clones the upstream platform
 read-only so deployments stay upgradeable: pull new upstream commits without
 touching your overlay.
 
+## Before you start
+
+You'll need four things on your machine: Docker, Docker Compose, Python, and Copier. Each one has a quick check command — if all four print sensible output, you're ready.
+
+### On Linux
+
+Run the four checks below. Any error means you need to install or fix that piece.
+
+```bash
+docker ps                    # should list containers (or print an empty header) — proves Docker is running
+docker compose version       # should print "Docker Compose version v2.x.y"
+python3 --version            # should print 3.11.x, 3.12.x, or 3.13.x
+copier --help                # should print Copier's usage screen
+```
+
+If any of those fail, here's how to fix them:
+
+**Docker missing or `docker ps` says permission denied?**
+
+```bash
+# Debian / Ubuntu - install Docker, Compose, and containerd in one go
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+
+# Add yourself to the docker group so you don't need sudo for every command
+sudo usermod -aG docker "$USER"
+# Log out and back in (or open a new terminal) for the group change to take effect
+```
+
+**Python missing?**
+
+```bash
+sudo apt install -y python3 python3-pip
+```
+
+**Copier missing?**
+
+```bash
+pip install --user copier
+# If `copier --help` still says "command not found", add ~/.local/bin to PATH:
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+```
+
+### On Windows
+
+The template generates Linux scripts and Linux containers, so the cleanest path on Windows is to do everything inside WSL2 (Microsoft's official Linux-on-Windows). Four steps:
+
+1. **Enable the WSL feature in Windows.** Open **Control Panel → Programs → Turn Windows features on or off**, tick **Windows Subsystem for Linux** (and **Virtual Machine Platform** while you're there), click OK, and reboot.
+2. **Install WSL2 and Ubuntu.** Open PowerShell as Administrator and run `wsl --install`, then reboot again. You'll have an Ubuntu shell when it's done.
+3. **Install Docker Desktop** from <https://www.docker.com/products/docker-desktop/>. After installing, open it once and go to **Settings → Resources → WSL Integration** and turn it on for your Ubuntu distro.
+4. **Open your Ubuntu (WSL2) terminal** and follow the Linux steps above. The four check commands should work the same way as on native Linux.
+
+If `docker ps` errors inside WSL2 with something about the daemon, double-check that Docker Desktop is running and that WSL Integration is enabled for the distro you're in.
+
 ## Quickstart
 
 ```bash
