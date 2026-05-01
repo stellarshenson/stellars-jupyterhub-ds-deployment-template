@@ -46,34 +46,72 @@ if [[ ! -f certs/tls.yml ]]; then
     fi
 fi
 
-# Upstream platform clone (NOT a git submodule). Treated as read-only:
-# this overlay never modifies its contents, only refreshes from origin/main
-# when explicitly asked via --refresh.
-# Listed in .gitignore so it does not appear in this repo's index.
+# Upstream platform location. Three supported shapes:
+#   1. git    - a regular git clone (default; what we clone if $SUB is missing)
+#   2. submodule - a git submodule of a parent repo (.git is a gitlink file)
+#   3. standalone - operator-placed content with no git tracking at all
+# The overlay treats $SUB as read-only - we never modify its contents, only
+# refresh on --refresh when it is git-managed. Listed in .gitignore so the
+# rendered overlay never tracks its contents.
 SUB="stellars-jupyterhub-ds"
 SUB_URL="https://github.com/stellarshenson/stellars-jupyterhub-ds.git"
 SUB_BRANCH="main"
 
-# One-time clone on first run if the directory is missing.
-if [[ ! -d "$SUB/.git" ]]; then
+# Classify $SUB into one of: git | submodule | standalone | missing.
+sub_kind() {
+    if   [[ ! -d "$SUB"     ]]; then echo missing
+    elif [[ -d "$SUB/.git"  ]]; then echo git
+    elif [[ -f "$SUB/.git"  ]]; then echo submodule
+    else                             echo standalone
+    fi
+}
+
+# One-time clone on first run if the directory is missing entirely.
+if [[ "$(sub_kind)" == "missing" ]]; then
     echo "Cloning $SUB (branch $SUB_BRANCH)..."
     git clone --branch "$SUB_BRANCH" "$SUB_URL" "$SUB"
 fi
 
-# The upstream clone must stay clean. Refuse to start if it was edited
-# locally - regardless of --refresh - so we never silently overwrite
-# in-progress upstream work.
-if [[ -n "$(git -C "$SUB" status --porcelain)" ]]; then
-    echo "ERROR: $SUB has local modifications; this directory is meant to be read-only." >&2
-    echo "       Revert the changes (git -C $SUB checkout .) or move them upstream before re-running." >&2
-    git -C "$SUB" status --short >&2
-    exit 1
-fi
+# Local-modifications guard. Git and submodule shapes must stay clean; we
+# refuse to start if anything was edited locally regardless of --refresh,
+# so we never silently overwrite in-progress upstream work. Standalone
+# folders skip this guard - we have nothing to track.
+case "$(sub_kind)" in
+    git|submodule)
+        if [[ -n "$(git -C "$SUB" status --porcelain)" ]]; then
+            echo "ERROR: $SUB has local modifications; this directory is meant to be read-only." >&2
+            echo "       Revert the changes (git -C $SUB checkout .) or move them upstream before re-running." >&2
+            git -C "$SUB" status --short >&2
+            exit 1
+        fi
+        ;;
+esac
 
-# Fast-forward only when explicitly asked.
+# Refresh from upstream only when explicitly asked. Behaviour per shape:
+#   - git       : fetch + rebase onto the configured upstream (origin/main
+#                 by default; respects operator's fork if origin was retargeted)
+#   - submodule : same fetch + rebase inside the submodule, plus a notice
+#                 that the parent repo's submodule pointer needs updating
+#                 separately for the change to be tracked there
+#   - standalone: refresh is meaningless; print a notice and continue
 if [[ "$REFRESH" == "1" ]]; then
-    echo "Refreshing $SUB (fast-forward only)..."
-    git -C "$SUB" pull --ff-only origin "$SUB_BRANCH"
+    case "$(sub_kind)" in
+        git|submodule)
+            kind=$(sub_kind)
+            upstream=$(git -C "$SUB" rev-parse --abbrev-ref '@{u}' 2>/dev/null || echo "origin/$SUB_BRANCH")
+            remote="${upstream%%/*}"
+            echo "Refreshing $SUB ($kind) - fetch + rebase onto $upstream..."
+            git -C "$SUB" fetch "$remote"
+            git -C "$SUB" rebase "$upstream"
+            if [[ "$kind" == "submodule" ]]; then
+                echo "Note: parent repo's submodule pointer is unchanged; from the parent run:"
+                echo "      git submodule update --remote --rebase $SUB"
+            fi
+            ;;
+        standalone)
+            echo "Note: $SUB is standalone (no git tracking); --refresh has no effect."
+            ;;
+    esac
 fi
 
 # Build compose command
