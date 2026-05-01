@@ -125,3 +125,7 @@ jobs:
           test "$original_mtime" = "$new_mtime" \
             && echo "OK: cert mtime unchanged across re-render" \
             || (echo "FAIL: cert was regenerated despite already existing" && exit 1)
+
+      - name: Operator-replacement branding cleanup
+        if: matrix.scenario.name == 'defaults'
+        run: bash tests/test_operator_branding.sh "$GITHUB_WORKSPACE" /tmp/operator-render

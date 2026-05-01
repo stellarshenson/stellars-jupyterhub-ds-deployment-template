@@ -41,18 +41,18 @@ _tasks:
   - "[ -f certs/tls.yml ] || (cd certs && bash certs_generate.sh)"
   # If the operator dropped their own branding images into branding/ with
   # filenames that don't match the template prefix, remove the matching
-  # template default. Per-type: a non-prefix .png removes the default logo,
-  # a non-prefix .svg removes the default main_icon, a non-prefix .ico
+  # template default. Per-type: a non-prefix .png removes the default jh_logo,
+  # a non-prefix .svg removes the default jl_logo, a non-prefix .ico
   # removes the default favicon. _skip_if_exists handles the same-name case.
   - |
     cd branding
-    if find . -maxdepth 1 -type f -iname '*.png' ! -name '{{ branding_prefix }}_*' 2>/dev/null | grep -q . && [ -f '{{ branding_prefix }}_logo.png' ]; then
-        rm -f '{{ branding_prefix }}_logo.png'
-        echo "Operator-provided PNG detected; removed template default {{ branding_prefix }}_logo.png"
+    if find . -maxdepth 1 -type f -iname '*.png' ! -name '{{ branding_prefix }}_*' 2>/dev/null | grep -q . && [ -f '{{ branding_prefix }}_jh_logo.png' ]; then
+        rm -f '{{ branding_prefix }}_jh_logo.png'
+        echo "Operator-provided PNG detected; removed template default {{ branding_prefix }}_jh_logo.png"
     fi
-    if find . -maxdepth 1 -type f -iname '*.svg' ! -name '{{ branding_prefix }}_*' 2>/dev/null | grep -q . && [ -f '{{ branding_prefix }}_main_icon.svg' ]; then
-        rm -f '{{ branding_prefix }}_main_icon.svg'
-        echo "Operator-provided SVG detected; removed template default {{ branding_prefix }}_main_icon.svg"
+    if find . -maxdepth 1 -type f -iname '*.svg' ! -name '{{ branding_prefix }}_*' 2>/dev/null | grep -q . && [ -f '{{ branding_prefix }}_jl_logo.svg' ]; then
+        rm -f '{{ branding_prefix }}_jl_logo.svg'
+        echo "Operator-provided SVG detected; removed template default {{ branding_prefix }}_jl_logo.svg"
     fi
     if find . -maxdepth 1 -type f -iname '*.ico' ! -name '{{ branding_prefix }}_*' 2>/dev/null | grep -q . && [ -f '{{ branding_prefix }}_favicon.ico' ]; then
         rm -f '{{ branding_prefix }}_favicon.ico'
@@ -117,7 +117,7 @@ project_slug:
 
 branding_prefix:
   type: str
-  help: "Filename prefix for branding assets (drives <prefix>_logo.png, etc.). Defaults to the project slug with hyphens converted to underscores."
+  help: "Filename prefix for branding assets (drives <prefix>_jh_logo.png, <prefix>_jl_logo.svg, <prefix>_favicon.ico). Defaults to the project slug with hyphens converted to underscores."
   default: "{{ project_slug | replace('-', '_') }}"
   validator: >-
     {% if not (branding_prefix | regex_search('^[a-z0-9_]+$')) %}

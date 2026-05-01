@@ -71,10 +71,10 @@ ok ".copier-answers.yml records the rendered answers"
 # 2. Branding files use the rendered prefix
 # ---------------------------------------------------------------------------
 if [[ -n "${EXPECTED_BRANDING_PREFIX:-}" ]]; then
-    test -f "branding/${EXPECTED_BRANDING_PREFIX}_logo.png" \
-        || fail "branding/${EXPECTED_BRANDING_PREFIX}_logo.png missing"
-    test -f "branding/${EXPECTED_BRANDING_PREFIX}_main_icon.svg" \
-        || fail "branding/${EXPECTED_BRANDING_PREFIX}_main_icon.svg missing"
+    test -f "branding/${EXPECTED_BRANDING_PREFIX}_jh_logo.png" \
+        || fail "branding/${EXPECTED_BRANDING_PREFIX}_jh_logo.png missing"
+    test -f "branding/${EXPECTED_BRANDING_PREFIX}_jl_logo.svg" \
+        || fail "branding/${EXPECTED_BRANDING_PREFIX}_jl_logo.svg missing"
     test -f "branding/${EXPECTED_BRANDING_PREFIX}_favicon.ico" \
         || fail "branding/${EXPECTED_BRANDING_PREFIX}_favicon.ico missing"
     ok "branding files use prefix '${EXPECTED_BRANDING_PREFIX}'"
@@ -96,12 +96,12 @@ for var in JUPYTERHUB_LOGO_URI JUPYTERHUB_FAVICON_URI JUPYTERHUB_LAB_MAIN_ICON_U
     if [[ -n "${EXPECTED_BRANDING_PREFIX:-}" ]]; then
         case "$var" in
             JUPYTERHUB_LOGO_URI)
-                [[ "$filename" = "${EXPECTED_BRANDING_PREFIX}_logo.png" ]] \
-                    || fail "$var filename '$filename' != '${EXPECTED_BRANDING_PREFIX}_logo.png'"
+                [[ "$filename" = "${EXPECTED_BRANDING_PREFIX}_jh_logo.png" ]] \
+                    || fail "$var filename '$filename' != '${EXPECTED_BRANDING_PREFIX}_jh_logo.png'"
                 ;;
             JUPYTERHUB_LAB_MAIN_ICON_URI)
-                [[ "$filename" = "${EXPECTED_BRANDING_PREFIX}_main_icon.svg" ]] \
-                    || fail "$var filename '$filename' != '${EXPECTED_BRANDING_PREFIX}_main_icon.svg'"
+                [[ "$filename" = "${EXPECTED_BRANDING_PREFIX}_jl_logo.svg" ]] \
+                    || fail "$var filename '$filename' != '${EXPECTED_BRANDING_PREFIX}_jl_logo.svg'"
                 ;;
             JUPYTERHUB_FAVICON_URI)
                 [[ "$filename" = "${EXPECTED_BRANDING_PREFIX}_favicon.ico" ]] \
