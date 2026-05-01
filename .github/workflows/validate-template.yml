@@ -23,6 +23,7 @@ jobs:
               EXPECTED_PROJECT_SLUG: my-jupyterhub
               EXPECTED_BRANDING_PREFIX: my_jupyterhub
               EXPECTED_BASE_HOSTNAME: localhost
+              EXPECTED_NETWORK_ADDRESSING: dns
               EXPECTED_ADMIN_USERNAME: admin
               EXPECTED_SIGNUP_ENABLED: "0"
               EXPECTED_CIFS_ENABLED: "false"
@@ -37,12 +38,13 @@ jobs:
               EXPECTED_PROJECT_SLUG: acme-ai-lab
               EXPECTED_BRANDING_PREFIX: acme_ai_lab
               EXPECTED_BASE_HOSTNAME: lab.acme.example
+              EXPECTED_NETWORK_ADDRESSING: dns
               EXPECTED_ADMIN_USERNAME: admin
               EXPECTED_SIGNUP_ENABLED: "0"
               EXPECTED_CIFS_ENABLED: "false"
               EXPECTED_CERT_CN: ACME AI LAB Certificate
-              EXPECTED_CERT_SANS: "*.lab.acme.example,lab.acme.example"
-              EXPECTED_CERT_PREFIX: _.lab.acme.example
+              EXPECTED_CERT_SANS: "*.localhost,localhost,*.lab.acme.example,lab.acme.example"
+              EXPECTED_CERT_PREFIX: _.localhost
 
           - name: with-cifs
             data: "--data cifs_shared_mount=true"
@@ -51,6 +53,7 @@ jobs:
               EXPECTED_PROJECT_SLUG: my-jupyterhub
               EXPECTED_BRANDING_PREFIX: my_jupyterhub
               EXPECTED_BASE_HOSTNAME: localhost
+              EXPECTED_NETWORK_ADDRESSING: dns
               EXPECTED_ADMIN_USERNAME: admin
               EXPECTED_SIGNUP_ENABLED: "0"
               EXPECTED_CIFS_ENABLED: "true"
@@ -59,18 +62,19 @@ jobs:
               EXPECTED_CERT_PREFIX: _.localhost
 
           - name: ip-host
-            data: "--data base_hostname=192.168.1.50"
+            data: "--data network_addressing=ip --data base_hostname=192.168.1.50"
             env:
               EXPECTED_PROJECT_NAME: My JupyterHub
               EXPECTED_PROJECT_SLUG: my-jupyterhub
               EXPECTED_BRANDING_PREFIX: my_jupyterhub
               EXPECTED_BASE_HOSTNAME: 192.168.1.50
+              EXPECTED_NETWORK_ADDRESSING: ip
               EXPECTED_ADMIN_USERNAME: admin
               EXPECTED_SIGNUP_ENABLED: "0"
               EXPECTED_CIFS_ENABLED: "false"
               EXPECTED_CERT_CN: MY JUPYTERHUB Certificate
-              EXPECTED_CERT_SANS: "192.168.1.50"
-              EXPECTED_CERT_PREFIX: "192.168.1.50"
+              EXPECTED_CERT_SANS: "*.localhost,localhost,192.168.1.50"
+              EXPECTED_CERT_PREFIX: _.localhost
 
           - name: signup-on
             data: "--data signup_enabled=true --data admin_username=alice"
@@ -79,6 +83,7 @@ jobs:
               EXPECTED_PROJECT_SLUG: my-jupyterhub
               EXPECTED_BRANDING_PREFIX: my_jupyterhub
               EXPECTED_BASE_HOSTNAME: localhost
+              EXPECTED_NETWORK_ADDRESSING: dns
               EXPECTED_ADMIN_USERNAME: alice
               EXPECTED_SIGNUP_ENABLED: "1"
               EXPECTED_CIFS_ENABLED: "false"
@@ -109,6 +114,7 @@ jobs:
           EXPECTED_PROJECT_SLUG: ${{ matrix.scenario.env.EXPECTED_PROJECT_SLUG }}
           EXPECTED_BRANDING_PREFIX: ${{ matrix.scenario.env.EXPECTED_BRANDING_PREFIX }}
           EXPECTED_BASE_HOSTNAME: ${{ matrix.scenario.env.EXPECTED_BASE_HOSTNAME }}
+          EXPECTED_NETWORK_ADDRESSING: ${{ matrix.scenario.env.EXPECTED_NETWORK_ADDRESSING }}
           EXPECTED_ADMIN_USERNAME: ${{ matrix.scenario.env.EXPECTED_ADMIN_USERNAME }}
           EXPECTED_SIGNUP_ENABLED: ${{ matrix.scenario.env.EXPECTED_SIGNUP_ENABLED }}
           EXPECTED_CIFS_ENABLED: ${{ matrix.scenario.env.EXPECTED_CIFS_ENABLED }}

@@ -7,16 +7,17 @@
 # variables (set by the caller / CI matrix). Anything not set is skipped
 # unless it has a deterministic default the template always emits.
 #
-#   EXPECTED_PROJECT_NAME       e.g. "My JupyterHub"
-#   EXPECTED_PROJECT_SLUG       e.g. "my-jupyterhub"
-#   EXPECTED_BRANDING_PREFIX    e.g. "my_jupyterhub"
-#   EXPECTED_BASE_HOSTNAME      e.g. "localhost"
-#   EXPECTED_ADMIN_USERNAME     e.g. "admin"
-#   EXPECTED_SIGNUP_ENABLED     "0" or "1"
-#   EXPECTED_CIFS_ENABLED       "true" or "false"
-#   EXPECTED_CERT_CN            e.g. "MY JUPYTERHUB Certificate"
-#   EXPECTED_CERT_SANS          comma-separated, e.g. "*.localhost,localhost"
-#   EXPECTED_CERT_PREFIX        e.g. "_.localhost" (first SAN with * -> _)
+#   EXPECTED_PROJECT_NAME         e.g. "My JupyterHub"
+#   EXPECTED_PROJECT_SLUG         e.g. "my-jupyterhub"
+#   EXPECTED_BRANDING_PREFIX      e.g. "my_jupyterhub"
+#   EXPECTED_BASE_HOSTNAME        e.g. "localhost"
+#   EXPECTED_NETWORK_ADDRESSING   "dns" or "ip"
+#   EXPECTED_ADMIN_USERNAME       e.g. "admin"
+#   EXPECTED_SIGNUP_ENABLED       "0" or "1"
+#   EXPECTED_CIFS_ENABLED         "true" or "false"
+#   EXPECTED_CERT_CN              e.g. "MY JUPYTERHUB Certificate"
+#   EXPECTED_CERT_SANS            comma-separated, e.g. "*.localhost,localhost"
+#   EXPECTED_CERT_PREFIX          e.g. "_.localhost" (first SAN with * -> _)
 
 set -e
 
@@ -58,11 +59,12 @@ check_answer() {
     grep -E "^${key}:[[:space:]]+['\"]?${expected}['\"]?$" "$ans" >/dev/null \
         || fail "$ans: '$key' != '$expected' (got: $(grep "^${key}:" "$ans" || echo missing))"
 }
-check_answer project_name      "${EXPECTED_PROJECT_NAME:-}"
-check_answer project_slug      "${EXPECTED_PROJECT_SLUG:-}"
-check_answer branding_prefix   "${EXPECTED_BRANDING_PREFIX:-}"
-check_answer base_hostname     "${EXPECTED_BASE_HOSTNAME:-}"
-check_answer admin_username    "${EXPECTED_ADMIN_USERNAME:-}"
+check_answer project_name        "${EXPECTED_PROJECT_NAME:-}"
+check_answer project_slug        "${EXPECTED_PROJECT_SLUG:-}"
+check_answer branding_prefix     "${EXPECTED_BRANDING_PREFIX:-}"
+check_answer base_hostname       "${EXPECTED_BASE_HOSTNAME:-}"
+check_answer network_addressing  "${EXPECTED_NETWORK_ADDRESSING:-}"
+check_answer admin_username      "${EXPECTED_ADMIN_USERNAME:-}"
 # bool answers in YAML are unquoted true/false
 [[ -n "${EXPECTED_CIFS_ENABLED:-}" ]] \
     && (grep -E "^cifs_shared_mount:[[:space:]]+${EXPECTED_CIFS_ENABLED}$" "$ans" >/dev/null \

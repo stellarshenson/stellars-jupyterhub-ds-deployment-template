@@ -122,17 +122,14 @@ If `docker ps` errors inside WSL2 with something about the daemon, confirm Docke
 ## Quickstart
 
 ```bash
-pip install copier
+pipx install copier        # see "Before you start" if pipx missing
 copier copy --trust gh:stellarshenson/copier-stellars-jupyterhub-ds ./my-jupyterhub
 cd my-jupyterhub
 ./start.sh
 ```
 
-`--trust` lets copier run the template's `_tasks` (chmod on the generated `start.sh` / `stop.sh`); without it copier refuses to execute post-copy commands.
-
-The interview asks ~15 questions (project name, hostname, admin user, branding
-prefix, optional CIFS / local TLS / etc.) and renders a working deployment.
-Each default is computed from earlier answers where possible.
+- `--trust` runs post-copy `_tasks` (chmod, cert gen). Without it copier refuses.
+- ~15 questions. Defaults computed from earlier answers.
 
 ## Generated layout
 

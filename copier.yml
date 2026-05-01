@@ -80,6 +80,7 @@ _message_after_copy: |2
     │  Admin username         {{ admin_username }}
     │  Self-registration      {{ 'enabled' if signup_enabled else 'disabled (admin bootstrap window opens on fresh DB)' }}
     ├─ Networking
+    │  Addressing             {{ network_addressing }}{% if network_addressing == 'ip' %}  (subdomain URLs not supported for IPs - see note below){% endif %}
     │  Base hostname          {{ base_hostname }}
     │  Subdomain              {{ jupyterhub_subdomain or '(root domain)' }}
     ├─ TLS  (self-signed; bundled local reverse proxy)
@@ -106,6 +107,13 @@ _message_after_copy: |2
 
     Then open https://{% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}{{ base_hostname }}/
     and complete the admin bootstrap (sign up as '{{ admin_username }}').
+    {%- if network_addressing == 'ip' %}
+
+    Note: subdomain URLs (https://X.{{ base_hostname }}/) won't work because IP
+    addresses don't have DNS subdomains. Use https://{{ base_hostname }}/ to reach
+    the platform. Local subdomain access still works on the host machine via
+    https://{% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}localhost/ since *.localhost is always included in the cert.
+    {%- endif %}
 
 # ── Identity ─────────────────────────────────────────────────────────────────
 project_name:
@@ -132,15 +140,33 @@ branding_prefix:
     {% endif %}
 
 # ── Networking ───────────────────────────────────────────────────────────────
+network_addressing:
+  type: str
+  help: "How is this deployment reached on the network?"
+  choices:
+    "DNS hostname (subdomain routing works - e.g. jupyterhub.lab.example.com)": dns
+    "Bare IP address (no subdomain support - reach via https://<ip>/ only)": ip
+  default: dns
+
 base_hostname:
   type: str
-  help: "Hostname, DNS domain, or IP address the deployment is reached on (e.g. 'localhost', 'lab.example.com', '192.168.1.50')."
-  default: "localhost"
+  help: |-
+    {% if network_addressing == 'dns' -%}
+    DNS name to reach this deployment. Examples: 'localhost', 'lab.example.com', 'my-host.local'.
+    {%- else -%}
+    IP address (subdomain routing is NOT possible with an IP - the deployment will be reachable at https://<this-ip>/ only; localhost subdomain access still works on the host).
+    {%- endif %}
+  default: "{% if network_addressing == 'dns' %}localhost{% else %}192.168.1.50{% endif %}"
+  validator: >-
+    {% if network_addressing == 'ip' and not (base_hostname | regex_search('^\d{1,3}(\.\d{1,3}){3}$')) %}
+    With network_addressing=ip, base_hostname must be an IPv4 address (matching ^\d{1,3}(\.\d{1,3}){3}$).
+    {% endif %}
 
 jupyterhub_subdomain:
   type: str
-  help: "Optional subdomain - leave empty to serve at the root host (e.g. https://localhost/). No trailing dot; copier adds it where needed. Auto-empties when base_hostname is an IP."
-  default: "{% if base_hostname | regex_search('^\\d{1,3}(\\.\\d{1,3}){3}$') %}{% else %}jupyterhub{% endif %}"
+  help: "Optional subdomain prefix (leave empty to serve at the root host, e.g. https://localhost/). No trailing dot; copier adds it where needed."
+  default: "{% if network_addressing == 'dns' %}jupyterhub{% endif %}"
+  when: "{{ network_addressing == 'dns' }}"
 
 # ── TLS ──────────────────────────────────────────────────────────────────────
 cert_common_name:
@@ -150,8 +176,8 @@ cert_common_name:
 
 cert_dns_altnames:
   type: str
-  help: "Cert SANs (comma-separated). DNS names get a wildcard sibling; an IP address is added as-is (no wildcard - IPs cannot have subject-alt-name wildcards)."
-  default: "{% if base_hostname | regex_search('^\\d{1,3}(\\.\\d{1,3}){3}$') %}{{ base_hostname }}{% else %}*.{{ base_hostname }},{{ base_hostname }}{% endif %}"
+  help: "Cert SANs (comma-separated). 'localhost' and '*.localhost' are always included so the operator can reach the deployment from the host machine. The configured base_hostname is added next - DNS names get a wildcard sibling; IPs are added as-is."
+  default: "*.localhost,localhost{% if base_hostname != 'localhost' %}{% if network_addressing == 'dns' %},*.{{ base_hostname }},{{ base_hostname }}{% else %},{{ base_hostname }}{% endif %}{% endif %}"
 
 # ── Authentication ───────────────────────────────────────────────────────────
 admin_username:

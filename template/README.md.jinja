@@ -12,9 +12,12 @@ Local deployment overlay of [stellars-jupyterhub-ds](https://github.com/stellars
 
 - `BASE_HOSTNAME={{ base_hostname }}` - root domain
 - `JUPYTERHUB_PREFIX={% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}` - subdomain prefix (empty = root)
+- Network addressing mode: `{{ network_addressing }}` ({% if network_addressing == 'dns' %}DNS hostname; subdomain routing supported{% else %}bare IP; subdomain routing NOT possible{% endif %})
 
 Default URL: `https://{% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}{{ base_hostname }}/`
-
+{% if network_addressing == 'ip' %}
+Subdomain URLs (`https://X.{{ base_hostname }}/`) won't resolve because IP addresses don't have DNS subdomains. The deployment is reachable only at the root URL above. Local subdomain access still works on the host machine via `https://{% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}localhost/` because `*.localhost` is always included in the cert.
+{% endif %}
 Override either value via `.env` (untracked).
 
 ## Structure
@@ -112,6 +115,15 @@ The first admin user is created in one of two modes. Both honour `JUPYTERHUB_ADM
 ```
 
 The hub seeds the admin record with that password on startup. The value is **initial only** - once the admin changes their password through the UI, the env value is permanently ignored.
+
+## Recommended user groups
+
+After admin login, at `/hub/groups`:
+
+- **`docker-user`** → tick **Docker engine** + **privileged**. Members' containers get `/var/run/docker.sock` mounted + `--privileged`. Docker-in-Docker, image builds.
+- **`gpu-user`** → tick **GPU access**. Members' containers get `--gpus all`. Needs host NVIDIA driver + Container Toolkit.
+
+Add users at `/hub/admin`. Grants OR-accumulate across groups. Group names arbitrary — capabilities are per-group config, not per-name.
 
 ## Branding
 
