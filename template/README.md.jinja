@@ -81,8 +81,7 @@ The helpers live in [copier-stellars-jupyterhub-ds/extra/certs-installer](https:
 
 ```bash
 ./start.sh           # Start the stack
-./start.sh --refresh # Update upstream stellars-jupyterhub-ds
-./start.sh --no-pull # Skip docker pull (use locally-built images)
+./start.sh --refresh # Pull latest upstream stellars-jupyterhub-ds + docker images
 ./stop.sh            # Stop all services
 ```
 

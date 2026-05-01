@@ -1,20 +1,23 @@
 #!/bin/bash
-# Start {{ project_name }} JupyterHub platform
-# Usage: ./start.sh [--refresh] [--no-pull]
+# Start {{ project_name }} platform
+# Usage: ./start.sh [--refresh]
 #   --refresh   fast-forward stellars-jupyterhub-ds clone to upstream/main
-#               (aborts on any local modifications or non-fast-forward history)
-#   --no-pull   skip the docker pull step; use whatever images are already on the host
+#               AND pull latest docker images. Without --refresh the script
+#               uses whatever is on disk (after a one-time clone of the
+#               upstream platform on first run).
+#
+# The upstream stellars-jupyterhub-ds/ clone is meant to be read-only. If
+# it has local modifications, start.sh refuses to run regardless of
+# --refresh - revert or upstream the changes first.
 
 set -e
 
 cd "$(dirname "$0")"
 
 REFRESH=0
-NO_PULL=0
 for arg in "$@"; do
     case "$arg" in
         --refresh) REFRESH=1 ;;
-        --no-pull) NO_PULL=1 ;;
         *) echo "Unknown option: $arg" >&2; exit 2 ;;
     esac
 done
@@ -44,25 +47,32 @@ if [[ ! -f certs/tls.yml ]]; then
 fi
 
 # Upstream platform clone (NOT a git submodule). Treated as read-only:
-# this overlay never modifies its contents, only refreshes from origin/main.
+# this overlay never modifies its contents, only refreshes from origin/main
+# when explicitly asked via --refresh.
 # Listed in .gitignore so it does not appear in this repo's index.
 SUB="stellars-jupyterhub-ds"
 SUB_URL="https://github.com/stellarshenson/stellars-jupyterhub-ds.git"
 SUB_BRANCH="main"
 
+# One-time clone on first run if the directory is missing.
 if [[ ! -d "$SUB/.git" ]]; then
     echo "Cloning $SUB (branch $SUB_BRANCH)..."
     git clone --branch "$SUB_BRANCH" "$SUB_URL" "$SUB"
 fi
 
+# The upstream clone must stay clean. Refuse to start if it was edited
+# locally - regardless of --refresh - so we never silently overwrite
+# in-progress upstream work.
+if [[ -n "$(git -C "$SUB" status --porcelain)" ]]; then
+    echo "ERROR: $SUB has local modifications; this directory is meant to be read-only." >&2
+    echo "       Revert the changes (git -C $SUB checkout .) or move them upstream before re-running." >&2
+    git -C "$SUB" status --short >&2
+    exit 1
+fi
+
+# Fast-forward only when explicitly asked.
 if [[ "$REFRESH" == "1" ]]; then
-    echo "Refreshing $SUB (fast-forward only; aborts on local modifications or non-ff history)..."
-    if [[ -n "$(git -C "$SUB" status --porcelain)" ]]; then
-        echo "ERROR: $SUB has local modifications; this directory is meant to be read-only." >&2
-        echo "       Either revert the changes (git -C $SUB checkout .) or move them upstream." >&2
-        git -C "$SUB" status --short >&2
-        exit 1
-    fi
+    echo "Refreshing $SUB (fast-forward only)..."
     git -C "$SUB" pull --ff-only origin "$SUB_BRANCH"
 fi
 
@@ -79,14 +89,14 @@ if [[ "${ENABLE_CIFS}" == "1" ]]; then
 fi
 {%- endif %}
 
-if [[ "$NO_PULL" == "1" ]]; then
-    echo "Skipping image pulls (--no-pull); using local images"
-else
+# Docker image pull is also gated by --refresh; without it, reuse whatever
+# images are already on the host (faster startup, no network round-trip).
+if [[ "$REFRESH" == "1" ]]; then
     echo "Pulling latest images..."
     docker compose ${COMPOSE_FILES} pull --ignore-pull-failures
 fi
 
-echo "Starting {{ project_name }} JupyterHub platform..."
+echo "Starting {{ project_name }} platform..."
 docker compose ${COMPOSE_FILES} up -d --no-build
 
 echo "Done. Access: https://${JUPYTERHUB_PREFIX:-{% if jupyterhub_subdomain %}{{ jupyterhub_subdomain }}.{% endif %}}${BASE_HOSTNAME:-{{ base_hostname }}}/"
