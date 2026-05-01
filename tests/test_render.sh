@@ -36,11 +36,36 @@ skip() { echo "${YELLOW}SKIP${NC}: $*"; }
 # 1. Static file structure
 # ---------------------------------------------------------------------------
 for f in start.sh stop.sh compose_override.yml env.default .env README.md \
-         certs/certs.params certs/certs_generate.sh certs/tls.yml; do
+         certs/certs.params certs/certs_generate.sh certs/tls.yml \
+         .copier-answers.yml; do
     test -f "$f" || fail "$f missing"
 done
 test -d branding || fail "branding/ missing"
 ok "static structure present"
+
+# ---------------------------------------------------------------------------
+# 1a. .copier-answers.yml records the answers we provided
+# ---------------------------------------------------------------------------
+ans=.copier-answers.yml
+# Check each expected value is recorded in the answers file. The file is
+# written as YAML with `key: value` lines (or quoted values for strings
+# containing special chars), so a flexible grep pattern works.
+check_answer() {
+    local key="$1" expected="$2"
+    [[ -z "$expected" ]] && return 0
+    grep -E "^${key}:[[:space:]]+['\"]?${expected}['\"]?$" "$ans" >/dev/null \
+        || fail "$ans: '$key' != '$expected' (got: $(grep "^${key}:" "$ans" || echo missing))"
+}
+check_answer project_name      "${EXPECTED_PROJECT_NAME:-}"
+check_answer project_slug      "${EXPECTED_PROJECT_SLUG:-}"
+check_answer branding_prefix   "${EXPECTED_BRANDING_PREFIX:-}"
+check_answer base_hostname     "${EXPECTED_BASE_HOSTNAME:-}"
+check_answer admin_username    "${EXPECTED_ADMIN_USERNAME:-}"
+# bool answers in YAML are unquoted true/false
+[[ -n "${EXPECTED_CIFS_ENABLED:-}" ]] \
+    && (grep -E "^cifs_shared_mount:[[:space:]]+${EXPECTED_CIFS_ENABLED}$" "$ans" >/dev/null \
+        || fail "$ans cifs_shared_mount != $EXPECTED_CIFS_ENABLED")
+ok ".copier-answers.yml records the rendered answers"
 
 # ---------------------------------------------------------------------------
 # 2. Branding files use the rendered prefix
