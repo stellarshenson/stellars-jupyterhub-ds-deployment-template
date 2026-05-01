@@ -15,57 +15,109 @@ touching your overlay.
 
 ## Before you start
 
-You'll need four things on your machine: Docker, Docker Compose, Python, and Copier. Each one has a quick check command — if all four print sensible output, you're ready.
+You need: Docker, Docker Compose v2, and Copier. (No system Python required — both Copier install paths below provide their own.) Plus optional NVIDIA driver + Container Toolkit if you want GPU-enabled JupyterLab.
 
-### On Linux
+### Linux checklist
 
-Run the four checks below. Any error means you need to install or fix that piece.
+Tick each item once the listed command works. Stop reading once everything passes.
+
+- [ ] `docker ps` prints an empty (or non-empty) container list, no error
+- [ ] `docker compose version` prints something like `Docker Compose version v2.x.y`
+- [ ] `copier --version` prints `9.x` or higher
+- [ ] (GPU only) `nvidia-smi` shows your NVIDIA GPU
+- [ ] (GPU only) `docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi` shows the GPU from inside a container
+
+For each unticked item, the matching install snippet:
+
+#### `docker ps` fails or says "permission denied"
+
+Pick **one** of these paths.
+
+**A. Docker Desktop for Linux (GUI, easiest)** — bundles Engine, Compose v2, and Buildx; one installer, same product as Windows/Mac:
+
+Download from <https://www.docker.com/products/docker-desktop/> and run the installer for your distro. Open it once and Docker is up.
+
+**B. Stock Ubuntu / Debian apt** (no third-party repo needed, verified on Ubuntu 24.04):
 
 ```bash
-docker ps                    # should list containers (or print an empty header) — proves Docker is running
-docker compose version       # should print "Docker Compose version v2.x.y"
-python3 --version            # should print 3.11.x, 3.12.x, or 3.13.x
-copier --help                # should print Copier's usage screen
-```
-
-If any of those fail, here's how to fix them:
-
-**Docker missing or `docker ps` says permission denied?**
-
-```bash
-# Debian / Ubuntu - install Docker, Compose, and containerd in one go
 sudo apt update
-sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-
-# Add yourself to the docker group so you don't need sudo for every command
+sudo apt install -y docker.io docker-compose-v2 containerd
 sudo usermod -aG docker "$USER"
-# Log out and back in (or open a new terminal) for the group change to take effect
+# Log out and back in (or run `newgrp docker`) for the group change to take effect
 ```
 
-**Python missing?**
+**C. Latest Docker CE via Docker's convenience script** (newer than what stock apt ships):
 
 ```bash
-sudo apt install -y python3 python3-pip
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker "$USER"
 ```
 
-**Copier missing?**
+After installing, re-run `docker ps` and `docker compose version` — both should print without errors.
+
+#### `copier --version` fails
+
+On Ubuntu 24.04+ and Debian 12+, plain `pip install copier` is **blocked** with `error: externally-managed-environment` (PEP 668). The system Python ships with an `EXTERNALLY-MANAGED` marker that tells pip to refuse modifying it, so apt and pip don't fight over the same `site-packages`. Use **pipx** — it's in stock apt, pulls in `python3` as a dependency for you, and installs Copier into its own isolated venv:
 
 ```bash
-pip install --user copier
-# If `copier --help` still says "command not found", add ~/.local/bin to PATH:
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+sudo apt update
+sudo apt install -y pipx
+pipx ensurepath          # adds ~/.local/bin to PATH; restart your shell after this
+pipx install copier
 ```
 
-### On Windows
+After restarting your shell, `copier --version` should print `9.x`.
 
-The template generates Linux scripts and Linux containers, so the cleanest path on Windows is to do everything inside WSL2 (Microsoft's official Linux-on-Windows). Four steps:
+Don't bother with `pip install --break-system-packages` — that "works" but defeats the protection PEP 668 exists for and may collide with apt.
 
-1. **Enable the WSL feature in Windows.** Open **Control Panel → Programs → Turn Windows features on or off**, tick **Windows Subsystem for Linux** (and **Virtual Machine Platform** while you're there), click OK, and reboot.
-2. **Install WSL2 and Ubuntu.** Open PowerShell as Administrator and run `wsl --install`, then reboot again. You'll have an Ubuntu shell when it's done.
-3. **Install Docker Desktop** from <https://www.docker.com/products/docker-desktop/>. After installing, open it once and go to **Settings → Resources → WSL Integration** and turn it on for your Ubuntu distro.
-4. **Open your Ubuntu (WSL2) terminal** and follow the Linux steps above. The four check commands should work the same way as on native Linux.
+#### `nvidia-smi` fails (you have an NVIDIA GPU and want GPU support)
 
-If `docker ps` errors inside WSL2 with something about the daemon, double-check that Docker Desktop is running and that WSL Integration is enabled for the distro you're in.
+Skip this section if you don't have an NVIDIA GPU or don't need GPU acceleration.
+
+**Step 1 — install the proprietary driver** (auto-detects the right version for your card):
+
+```bash
+sudo apt install -y ubuntu-drivers-common
+sudo ubuntu-drivers autoinstall
+sudo reboot
+```
+
+After reboot, `nvidia-smi` should print your GPU model and driver version.
+
+**Step 2 — install NVIDIA Container Toolkit** so Docker can pass the GPU through (uses NVIDIA's apt repo because the toolkit isn't in stock Ubuntu):
+
+```bash
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
+  sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+  sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+  sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+sudo apt update
+sudo apt install -y nvidia-container-toolkit
+sudo nvidia-ctk runtime configure --runtime=docker
+sudo systemctl restart docker
+```
+
+Verify with the second GPU check from the checklist:
+
+```bash
+docker run --rm --gpus all nvidia/cuda:12.4.0-base-ubuntu22.04 nvidia-smi
+```
+
+### Windows checklist
+
+The template scaffolds Linux scripts and Linux containers, so on Windows you do everything inside WSL2.
+
+- [ ] **Windows Subsystem for Linux** enabled in Control Panel → Programs → Turn Windows features on or off
+- [ ] **Virtual Machine Platform** enabled in the same place
+- [ ] Reboot after enabling those two features
+- [ ] `wsl --install` run from an admin PowerShell, followed by another reboot — Ubuntu shows up in the Start menu
+- [ ] Docker Desktop installed from <https://www.docker.com/products/docker-desktop/>, opened at least once
+- [ ] In Docker Desktop: **Settings → Resources → WSL Integration** turned on for your Ubuntu distro
+- [ ] Inside Ubuntu (WSL2), all three Linux checks pass: `docker ps`, `docker compose version`, `copier --version`
+- [ ] (GPU only) Install NVIDIA's [GeForce / RTX driver for WSL](https://www.nvidia.com/en-us/drivers/) on Windows, then verify `nvidia-smi` works inside the WSL2 Ubuntu shell. NVIDIA Container Toolkit goes inside Ubuntu as in the Linux GPU step above.
+
+If `docker ps` errors inside WSL2 with something about the daemon, confirm Docker Desktop is running on Windows and WSL Integration is on for your distro.
 
 ## Quickstart
 
