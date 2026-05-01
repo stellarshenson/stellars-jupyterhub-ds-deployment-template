@@ -35,29 +35,36 @@ _skip_if_exists:
 _tasks:
   - "chmod +x start.sh stop.sh"
   - "chmod +x certs/certs_generate.sh"
-  # Generate the self-signed cert eagerly so the rendered overlay has
-  # certs/tls.yml immediately. The shell guard makes the task idempotent
-  # on `copier update`: if tls.yml is already present, regeneration is skipped.
-  - "[ -f certs/tls.yml ] || (cd certs && bash certs_generate.sh)"
-  # If the operator dropped their own branding images into branding/ with
-  # filenames that don't match the template prefix, remove the matching
-  # template default. Per-type: a non-prefix .png removes the default jh_logo,
-  # a non-prefix .svg removes the default jl_logo, a non-prefix .ico
-  # removes the default favicon. _skip_if_exists handles the same-name case.
+  # Eager cert generation on initial `copier copy` only. On `copier update`
+  # copier renders into temp dirs to compute a 3-way diff; any cert
+  # generated there ends up in the diff and would propose overwriting the
+  # destination cert with a freshly-keyed one. The `when:` condition is
+  # rendered with `_copier_operation` ('copy' or 'update') as a Jinja var.
+  - command: "[ -f certs/tls.yml ] || (cd certs && bash certs_generate.sh)"
+    when: "{{ _copier_operation == 'copy' }}"
+  # Branding cleanup: drop a template default when the operator has supplied
+  # a replacement. Per-asset (jh_logo / jl_logo / favicon) we recognise two
+  # replacement shapes:
+  #   (a) prefix-named, same base, different extension - e.g. operator
+  #       dropped <prefix>_jh_logo.svg in place of <prefix>_jh_logo.png
+  #   (b) non-prefix file with the same extension as the default - e.g.
+  #       operator dropped acme_logo.png in place of <prefix>_jh_logo.png
+  # _skip_if_exists handles the same-name same-extension case (operator
+  # overwrote the file's content but kept the rendered name).
   - |
     cd branding
-    if find . -maxdepth 1 -type f -iname '*.png' ! -name '{{ branding_prefix }}_*' 2>/dev/null | grep -q . && [ -f '{{ branding_prefix }}_jh_logo.png' ]; then
-        rm -f '{{ branding_prefix }}_jh_logo.png'
-        echo "Operator-provided PNG detected; removed template default {{ branding_prefix }}_jh_logo.png"
-    fi
-    if find . -maxdepth 1 -type f -iname '*.svg' ! -name '{{ branding_prefix }}_*' 2>/dev/null | grep -q . && [ -f '{{ branding_prefix }}_jl_logo.svg' ]; then
-        rm -f '{{ branding_prefix }}_jl_logo.svg'
-        echo "Operator-provided SVG detected; removed template default {{ branding_prefix }}_jl_logo.svg"
-    fi
-    if find . -maxdepth 1 -type f -iname '*.ico' ! -name '{{ branding_prefix }}_*' 2>/dev/null | grep -q . && [ -f '{{ branding_prefix }}_favicon.ico' ]; then
-        rm -f '{{ branding_prefix }}_favicon.ico'
-        echo "Operator-provided ICO detected; removed template default {{ branding_prefix }}_favicon.ico"
-    fi
+    for spec in 'jh_logo:png' 'jl_logo:svg' 'favicon:ico'; do
+        asset=${spec%%:*}
+        defext=${spec#*:}
+        default="{{ branding_prefix }}_${asset}.${defext}"
+        [ -f "$default" ] || continue
+        prefix_other=$(find . -maxdepth 1 -type f -iname "{{ branding_prefix }}_${asset}.*" ! -name "$default" 2>/dev/null | head -1)
+        non_prefix=$(find . -maxdepth 1 -type f -iname "*.${defext}" ! -name '{{ branding_prefix }}_*' 2>/dev/null | head -1)
+        if [ -n "$prefix_other" ] || [ -n "$non_prefix" ]; then
+            rm -f "$default"
+            echo "Operator-provided ${asset} detected; removed template default $default"
+        fi
+    done
 _message_after_copy: |2
 
     ╔══════════════════════════════════════════════════════════════════╗

@@ -25,7 +25,7 @@ ok()   { echo "${GREEN}OK${NC}: $*"; }
 
 # 1. Fresh render with defaults -> all three template assets present.
 rm -rf "$RENDER"
-copier copy --trust --defaults "$SRC" "$RENDER" >/dev/null
+copier copy --trust --defaults --vcs-ref=HEAD "$SRC" "$RENDER" >/dev/null
 
 PREFIX=my_jupyterhub  # default branding_prefix when project_name="My JupyterHub"
 
@@ -40,7 +40,7 @@ printf '<svg xmlns="http://www.w3.org/2000/svg"/>' > "$RENDER/branding/operator_
 printf '\x00\x00\x01\x00' > "$RENDER/branding/operator_brand.ico"
 
 # 3. Re-render with --overwrite so the cleanup task in _tasks runs again.
-copier copy --trust --defaults --overwrite "$SRC" "$RENDER" >/dev/null
+copier copy --trust --defaults --overwrite --vcs-ref=HEAD "$SRC" "$RENDER" >/dev/null
 
 # 4. Defaults of the matching extension are gone.
 test ! -f "$RENDER/branding/${PREFIX}_jh_logo.png" \
@@ -59,9 +59,9 @@ ok "operator-provided files preserved across re-render"
 
 # 6. Single-extension scenario: only one operator file, only one default removed.
 rm -rf "$RENDER"
-copier copy --trust --defaults "$SRC" "$RENDER" >/dev/null
+copier copy --trust --defaults --vcs-ref=HEAD "$SRC" "$RENDER" >/dev/null
 echo "operator-png-only" > "$RENDER/branding/single.png"
-copier copy --trust --defaults --overwrite "$SRC" "$RENDER" >/dev/null
+copier copy --trust --defaults --overwrite --vcs-ref=HEAD "$SRC" "$RENDER" >/dev/null
 
 test ! -f "$RENDER/branding/${PREFIX}_jh_logo.png" \
     || fail "single-ext: default ${PREFIX}_jh_logo.png NOT removed"
@@ -70,3 +70,24 @@ test -f "$RENDER/branding/${PREFIX}_jl_logo.svg" \
 test -f "$RENDER/branding/${PREFIX}_favicon.ico" \
     || fail "single-ext: default ${PREFIX}_favicon.ico was wrongly removed (no operator ICO)"
 ok "cleanup is per-extension, not blanket"
+
+# 7. Prefix-named, different-extension scenario: operator drops
+# <prefix>_jh_logo.svg replacing the .png default; the template re-renders
+# the missing .png on update, but cleanup must detect the prefix-other-ext
+# replacement and remove the regenerated .png. Same for jl_logo (default
+# .svg replaced with .png) and favicon (.ico replaced with .png).
+rm -rf "$RENDER"
+copier copy --trust --defaults --vcs-ref=HEAD "$SRC" "$RENDER" >/dev/null
+rm "$RENDER/branding/${PREFIX}_jh_logo.png"
+printf '<svg xmlns="http://www.w3.org/2000/svg"/>' > "$RENDER/branding/${PREFIX}_jh_logo.svg"
+copier copy --trust --defaults --overwrite --vcs-ref=HEAD "$SRC" "$RENDER" >/dev/null
+
+test ! -f "$RENDER/branding/${PREFIX}_jh_logo.png" \
+    || fail "prefix-other-ext: re-rendered ${PREFIX}_jh_logo.png NOT removed despite operator's ${PREFIX}_jh_logo.svg"
+test -f "$RENDER/branding/${PREFIX}_jh_logo.svg" \
+    || fail "prefix-other-ext: operator's ${PREFIX}_jh_logo.svg was wrongly removed"
+test -f "$RENDER/branding/${PREFIX}_jl_logo.svg" \
+    || fail "prefix-other-ext: untouched default ${PREFIX}_jl_logo.svg was wrongly removed"
+test -f "$RENDER/branding/${PREFIX}_favicon.ico" \
+    || fail "prefix-other-ext: untouched default ${PREFIX}_favicon.ico was wrongly removed"
+ok "prefix-named different-extension replacement removes the matching default"
