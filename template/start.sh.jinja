@@ -72,20 +72,11 @@ if [[ "$(sub_kind)" == "missing" ]]; then
     git clone --branch "$SUB_BRANCH" "$SUB_URL" "$SUB"
 fi
 
-# Local-modifications guard. Git and submodule shapes must stay clean; we
-# refuse to start if anything was edited locally regardless of --refresh,
-# so we never silently overwrite in-progress upstream work. Standalone
-# folders skip this guard - we have nothing to track.
-case "$(sub_kind)" in
-    git|submodule)
-        if [[ -n "$(git -C "$SUB" status --porcelain)" ]]; then
-            echo "ERROR: $SUB has local modifications; this directory is meant to be read-only." >&2
-            echo "       Revert the changes (git -C $SUB checkout .) or move them upstream before re-running." >&2
-            git -C "$SUB" status --short >&2
-            exit 1
-        fi
-        ;;
-esac
+# Without --refresh: use whatever is on disk. We do NOT police the upstream
+# tree's working state - operators may legitimately have local modifications
+# (especially in submodule mode where the parent repo tracks a custom commit
+# or a patched build). Only --refresh would mutate the tree, so the dirty-
+# tree guard is gated on that flag below.
 
 # Refresh from upstream only when explicitly asked. Behaviour per shape:
 #   - git       : fetch + rebase onto the configured upstream (origin/main
@@ -98,6 +89,14 @@ if [[ "$REFRESH" == "1" ]]; then
     case "$(sub_kind)" in
         git|submodule)
             kind=$(sub_kind)
+            # Only NOW does the dirty-tree guard apply: --refresh would
+            # rebase, which would clobber/conflict with local modifications.
+            if [[ -n "$(git -C "$SUB" status --porcelain)" ]]; then
+                echo "ERROR: $SUB has local modifications; --refresh would overwrite them." >&2
+                echo "       Commit or revert the changes (git -C $SUB checkout .) or omit --refresh to use the tree as-is." >&2
+                git -C "$SUB" status --short >&2
+                exit 1
+            fi
             upstream=$(git -C "$SUB" rev-parse --abbrev-ref '@{u}' 2>/dev/null || echo "origin/$SUB_BRANCH")
             remote="${upstream%%/*}"
             echo "Refreshing $SUB ($kind) - fetch + rebase onto $upstream..."
